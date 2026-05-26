@@ -795,8 +795,8 @@ const DEFAULT_PIN   = '1234';
 let pinBuffer       = '';
 let lockoutTimer    = null;
 let inactivityTimer = null;
-let changePinMode   = false;  // true = setting new PIN
-let changePinFirst  = '';     // first entry of new PIN
+let changePinFirst  = '';     // first entry of new PIN during change flow
+let changePinStage  = 0;      // 0=off 1=verify old 2=enter new 3=confirm new
 
 // ── Crypto helpers ────────────────────────────────────────────────
 async function sha256(str) {
@@ -851,7 +851,7 @@ function updateDots() {
 
 // ── PIN check ─────────────────────────────────────────────────────
 async function checkPin() {
-  if (changePinMode) {
+  if (changePinStage > 0) {
     handleChangePinEntry();
     return;
   }
@@ -963,7 +963,7 @@ function lockDashboard() {
   screen.style.display = 'flex';
   screen.classList.remove('hidden');
   pinBuffer = '';
-  changePinMode = false;
+  changePinStage = 0;
   changePinFirst = '';
   updateDots();
   document.getElementById('pin-label').textContent   = 'ENTER PIN';
@@ -973,44 +973,72 @@ function lockDashboard() {
 
 // ── Change PIN flow ───────────────────────────────────────────────
 function showChangePinUI() {
-  changePinMode  = true;
+  // Only accessible from the locked screen — start at stage 1 (verify old PIN)
+  changePinStage = 1;
   changePinFirst = '';
   pinBuffer = '';
   updateDots();
-  document.getElementById('pin-label').textContent    = 'ENTER NEW PIN';
-  document.getElementById('pin-attempts').textContent = '';
+  document.getElementById('pin-label').textContent    = 'ENTER CURRENT PIN';
+  document.getElementById('pin-attempts').textContent = 'Verify your identity first';
 }
 
 async function handleChangePinEntry() {
-  if (!changePinFirst) {
-    // First entry — store and ask to confirm
+  // Stage 1 — verify the current PIN before allowing any change
+  if (changePinStage === 1) {
+    const entered = await hashPin(pinBuffer);
+    const stored  = localStorage.getItem(PIN_KEY);
+    pinBuffer = '';
+    if (entered === stored) {
+      // Old PIN correct — move to stage 2
+      changePinStage = 2;
+      updateDots();
+      document.getElementById('pin-label').textContent    = 'ENTER NEW PIN';
+      document.getElementById('pin-attempts').textContent = '';
+    } else {
+      // Wrong old PIN — shake and go back to normal login
+      wrongPinAttempt();
+      changePinStage = 0;
+      changePinFirst = '';
+      updateDots();
+      document.getElementById('pin-label').textContent = 'ENTER PIN';
+    }
+    return;
+  }
+
+  // Stage 2 — store first entry of new PIN
+  if (changePinStage === 2) {
     changePinFirst = pinBuffer;
     pinBuffer = '';
+    changePinStage = 3;
     updateDots();
     document.getElementById('pin-label').textContent    = 'CONFIRM NEW PIN';
     document.getElementById('pin-attempts').textContent = '';
-  } else {
-    // Second entry — check they match
+    return;
+  }
+
+  // Stage 3 — confirm new PIN matches
+  if (changePinStage === 3) {
     if (pinBuffer === changePinFirst) {
       const hash = await hashPin(pinBuffer);
       localStorage.setItem(PIN_KEY, hash);
-      changePinMode  = false;
+      changePinStage = 0;
       changePinFirst = '';
       pinBuffer = '';
       updateDots();
-      document.getElementById('pin-label').textContent    = 'PIN UPDATED';
-      document.getElementById('pin-attempts').textContent = 'New PIN saved. Tap a key to continue.';
+      document.getElementById('pin-label').textContent    = 'PIN UPDATED ✓';
+      document.getElementById('pin-attempts').textContent = 'New PIN saved successfully';
       setTimeout(() => {
         document.getElementById('pin-label').textContent    = 'ENTER PIN';
         document.getElementById('pin-attempts').textContent = '';
       }, 2000);
     } else {
-      // Mismatch — restart change flow
+      // Mismatch — restart from stage 2 (don't need to re-verify old PIN)
       changePinFirst = '';
       pinBuffer = '';
+      changePinStage = 2;
       updateDots();
       document.getElementById('pin-label').textContent    = 'PINS DID NOT MATCH';
-      document.getElementById('pin-attempts').textContent = 'Try again — enter new PIN';
+      document.getElementById('pin-attempts').textContent = 'Enter your new PIN again';
       setTimeout(() => {
         document.getElementById('pin-label').textContent = 'ENTER NEW PIN';
       }, 1500);
