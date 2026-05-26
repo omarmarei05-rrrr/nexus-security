@@ -14,6 +14,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
 <!-- Paho MQTT client (WebSocket) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
   --bg:      #080c10;
@@ -316,6 +318,58 @@ header::before {
   letter-spacing: 2px; cursor: pointer; transition: all 0.2s;
 }
 .pin-change-btn:hover { border-color: var(--accent2); color: var(--accent); }
+/* ── SENSOR HISTORY CHART ─────────────────────────────────────── */
+.chart-wrap {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 18px 20px; margin-top: 20px; position: relative;
+}
+.chart-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.chart-legend {
+  display: flex; gap: 16px; align-items: center;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 1px;
+}
+.legend-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.chart-range {
+  display: flex; gap: 6px;
+}
+.range-btn {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+  padding: 4px 10px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: all 0.2s;
+}
+.range-btn:hover  { border-color: var(--accent); color: var(--accent); }
+.range-btn.active { border-color: var(--accent); color: var(--accent);
+                    background: rgba(0,212,255,0.08); }
+.chart-canvas-wrap {
+  position: relative; height: 160px;
+}
+.chart-stats {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 10px; margin-top: 14px;
+}
+.chart-stat {
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 10px 12px; text-align: center;
+}
+.chart-stat-val {
+  font-family: var(--mono); font-size: 20px; font-weight: 700;
+  color: var(--accent); line-height: 1;
+}
+.chart-stat-lbl {
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  letter-spacing: 2px; margin-top: 4px; text-transform: uppercase;
+}
+@media(max-width:500px){ .chart-stats { grid-template-columns: repeat(2,1fr); } }
 </style>
 </head>
 <body>
@@ -451,6 +505,52 @@ header::before {
           <button class="btn" onclick="testSMS()">TEST SMS</button>
         </div>
         <div class="cfg-status" id="cfg-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sensor History Chart -->
+  <div class="chart-wrap">
+    <div class="chart-header">
+      <div class="sec-title" style="margin-bottom:0;border:none;padding:0;">Sensor History</div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div class="chart-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#ff3b3b;"></div>PIR MOTION
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#00d4ff;"></div>DOOR
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#ffaa00;"></div>ALARM
+          </div>
+        </div>
+        <div class="chart-range">
+          <button class="range-btn active" onclick="setChartRange(15,this)">15M</button>
+          <button class="range-btn"        onclick="setChartRange(30,this)">30M</button>
+          <button class="range-btn"        onclick="setChartRange(60,this)">1H</button>
+        </div>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap">
+      <canvas id="sensor-chart"></canvas>
+    </div>
+    <div class="chart-stats">
+      <div class="chart-stat">
+        <div class="chart-stat-val" id="stat-pir-count">0</div>
+        <div class="chart-stat-lbl">PIR triggers</div>
+      </div>
+      <div class="chart-stat">
+        <div class="chart-stat-val" id="stat-door-count">0</div>
+        <div class="chart-stat-lbl">Door opens</div>
+      </div>
+      <div class="chart-stat">
+        <div class="chart-stat-val" id="stat-alarm-count">0</div>
+        <div class="chart-stat-lbl">Alarms</div>
+      </div>
+      <div class="chart-stat">
+        <div class="chart-stat-val" id="stat-last-event">—</div>
+        <div class="chart-stat-lbl">Last event</div>
       </div>
     </div>
   </div>
@@ -706,7 +806,237 @@ function toast(msg) {
 }
 
 
-// ── SERVICE WORKER + PWA ───────────────────────────────────────
+
+// ══ SENSOR HISTORY CHART ═════════════════════════════════════════
+
+// Ring buffer — stores one data point per 10 seconds, max 360 points (1 hour)
+const CHART_INTERVAL_MS = 10000;   // sample every 10s
+const CHART_MAX_POINTS  = 360;     // 360 × 10s = 1 hour
+
+let chartRangeMinutes = 15;        // currently displayed window
+let chartInstance     = null;
+
+// Each point: { t: timestamp_ms, pir: 0|1, door: 0|1, alarm: 0|1 }
+let chartHistory = [];
+
+// Running counters for stat cards
+let statPirCount   = 0;
+let statDoorCount  = 0;
+let statAlarmCount = 0;
+let statLastEvent  = '—';
+
+// Previous sensor state for edge detection
+let prevPir   = false;
+let prevDoor  = false;
+let prevAlarm = false;
+
+// ── Sample sensor state every 10s ────────────────────────────────
+function recordChartSample() {
+  const now = Date.now();
+  const s   = state;
+
+  // Detect rising edges for counters
+  if (s.pir   && !prevPir)   { statPirCount++;   statLastEvent = fmtTime(now); }
+  if (s.door  && !prevDoor)  { statDoorCount++;  statLastEvent = fmtTime(now); }
+  if (s.alarm && !prevAlarm) { statAlarmCount++; statLastEvent = fmtTime(now); }
+  prevPir   = s.pir;
+  prevDoor  = s.door;
+  prevAlarm = s.alarm;
+
+  // Push new point, evict oldest if at capacity
+  chartHistory.push({
+    t:     now,
+    pir:   s.pir   ? 1 : 0,
+    door:  s.door  ? 1 : 0,
+    alarm: s.alarm ? 1 : 0
+  });
+  if (chartHistory.length > CHART_MAX_POINTS) chartHistory.shift();
+
+  updateChart();
+  updateStatCards();
+}
+
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return d.getHours().toString().padStart(2,'0') + ':' +
+         d.getMinutes().toString().padStart(2,'0');
+}
+
+// ── Filter history to current range window ────────────────────────
+function getWindowedData() {
+  const cutoff = Date.now() - chartRangeMinutes * 60 * 1000;
+  return chartHistory.filter(p => p.t >= cutoff);
+}
+
+// ── Build chart datasets ──────────────────────────────────────────
+function buildDatasets(points) {
+  const labels = points.map(p => {
+    const d = new Date(p.t);
+    return d.getHours().toString().padStart(2,'0') + ':' +
+           d.getMinutes().toString().padStart(2,'0') + ':' +
+           d.getSeconds().toString().padStart(2,'0');
+  });
+
+  const pirData   = points.map(p => p.pir   ? 2.8 : null);  // staggered heights
+  const doorData  = points.map(p => p.door  ? 1.8 : null);  // so lines don't overlap
+  const alarmData = points.map(p => p.alarm ? 0.8 : null);
+
+  return { labels, pirData, doorData, alarmData };
+}
+
+// ── Create chart on first call ────────────────────────────────────
+function initChart() {
+  const ctx = document.getElementById('sensor-chart').getContext('2d');
+
+  Chart.defaults.color = '#4a6a8a';
+  Chart.defaults.font.family = "'Share Tech Mono', monospace";
+  Chart.defaults.font.size   = 10;
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label:           'PIR Motion',
+          data:            [],
+          borderColor:     '#ff3b3b',
+          backgroundColor: 'rgba(255,59,59,0.15)',
+          borderWidth:     2,
+          pointRadius:     3,
+          pointHoverRadius:5,
+          pointBackgroundColor: '#ff3b3b',
+          stepped:         true,
+          fill:            true,
+          spanGaps:        false,
+        },
+        {
+          label:           'Door',
+          data:            [],
+          borderColor:     '#00d4ff',
+          backgroundColor: 'rgba(0,212,255,0.10)',
+          borderWidth:     2,
+          pointRadius:     3,
+          pointHoverRadius:5,
+          pointBackgroundColor: '#00d4ff',
+          stepped:         true,
+          fill:            true,
+          spanGaps:        false,
+        },
+        {
+          label:           'Alarm',
+          data:            [],
+          borderColor:     '#ffaa00',
+          backgroundColor: 'rgba(255,170,0,0.10)',
+          borderWidth:     2,
+          pointRadius:     3,
+          pointHoverRadius:5,
+          pointBackgroundColor: '#ffaa00',
+          stepped:         true,
+          fill:            true,
+          spanGaps:        false,
+        }
+      ]
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      animation:           { duration: 300 },
+      interaction:         { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d1420',
+          borderColor:     '#1a2d44',
+          borderWidth:     1,
+          titleColor:      '#c8ddf0',
+          bodyColor:       '#4a6a8a',
+          padding:         10,
+          callbacks: {
+            label: ctx => {
+              const val = ctx.raw;
+              if (val === null) return ctx.dataset.label + ': CLEAR';
+              const labels = ['', 'ALARM', 'DOOR OPEN', 'PIR TRIGGERED'];
+              return ctx.dataset.label + ': ' + (val !== null ? 'ACTIVE' : 'CLEAR');
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid:   { color: 'rgba(26,45,68,0.6)', lineWidth: 0.5 },
+          ticks:  {
+            color:        '#4a6a8a',
+            maxTicksLimit: 6,
+            maxRotation:   0,
+          },
+          border: { color: '#1a2d44' }
+        },
+        y: {
+          min:   0,
+          max:   3.6,
+          grid:  { color: 'rgba(26,45,68,0.6)', lineWidth: 0.5 },
+          border:{ color: '#1a2d44' },
+          ticks: {
+            color: '#4a6a8a',
+            callback: val => {
+              if (val === 2.8) return 'PIR';
+              if (val === 1.8) return 'DOOR';
+              if (val === 0.8) return 'ALARM';
+              return '';
+            },
+            stepSize: 1
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── Push new data into chart ──────────────────────────────────────
+function updateChart() {
+  if (!chartInstance) return;
+  const points = getWindowedData();
+  const { labels, pirData, doorData, alarmData } = buildDatasets(points);
+
+  chartInstance.data.labels             = labels;
+  chartInstance.data.datasets[0].data   = pirData;
+  chartInstance.data.datasets[1].data   = doorData;
+  chartInstance.data.datasets[2].data   = alarmData;
+  chartInstance.update('none');  // 'none' skips animation for live updates
+}
+
+// ── Update stat cards ─────────────────────────────────────────────
+function updateStatCards() {
+  document.getElementById('stat-pir-count').textContent   = statPirCount;
+  document.getElementById('stat-door-count').textContent  = statDoorCount;
+  document.getElementById('stat-alarm-count').textContent = statAlarmCount;
+  document.getElementById('stat-last-event').textContent  = statLastEvent;
+}
+
+// ── Range button handler ──────────────────────────────────────────
+function setChartRange(minutes, btn) {
+  chartRangeMinutes = minutes;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateChart();
+}
+
+// ── Start sampling ────────────────────────────────────────────────
+// Wait for Chart.js to load then init, sample every 10s
+function startChart() {
+  if (typeof Chart === 'undefined') {
+    setTimeout(startChart, 200);
+    return;
+  }
+  initChart();
+  setInterval(recordChartSample, CHART_INTERVAL_MS);
+  // Take an immediate first sample so chart isn't blank
+  setTimeout(recordChartSample, 1000);
+}
+startChart();
+
+
 let deferredInstallPrompt = null;
 
 if ('serviceWorker' in navigator) {
