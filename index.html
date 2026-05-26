@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NEXUS">
+<meta name="theme-color" content="#00d4ff">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>NEXUS — Security</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -337,7 +343,7 @@ header::before {
 <script>
 // ── CONFIGURATION ──────────────────────────────────────────────
 // Fill these in with your HiveMQ Cloud details
-const MQTT_HOST   = 'nexus-4408dcb8.a01.euc1.aws.hivemq.cloud';
+const MQTT_HOST   =  'nexus-4408dcb8.a01.euc1.aws.hivemq.cloud';
 const MQTT_PORT   = 8884;       // WebSocket over TLS port
 const MQTT_USER   = 'omarmarei';
 const MQTT_PASS   = 'Omar$2005';
@@ -422,6 +428,17 @@ function publishCmd(cmd) {
 
 // ── UI UPDATE FROM STATE ───────────────────────────────────────
 function updateUI(d) {
+  // Trigger notification when alarm fires
+  if (d.alarm && !state.alarm) {
+    sendLocalNotification('⚠️ NEXUS ALARM', 'Intruder detected at your property!');
+  }
+  if (d.armed && d.pir && !state.pir) {
+    sendLocalNotification('⚠️ Motion Detected', 'PIR sensor triggered while armed.');
+  }
+  if (d.armed && d.door && !state.door) {
+    sendLocalNotification('⚠️ Door Opened', 'Door sensor triggered while armed.');
+  }
+
   state = d;
 
   // Mode panel
@@ -559,6 +576,75 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
+
+
+// ── SERVICE WORKER + PWA ───────────────────────────────────────
+let deferredInstallPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/nexus-security/sw.js')
+    .then(reg => {
+      console.log('SW registered:', reg.scope);
+      // Listen for messages from SW (e.g. DISARM action from notification)
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.action === 'DISARM') {
+          publishCmd('DISARM');
+          toast('Disarmed from notification');
+        }
+      });
+    })
+    .catch(err => console.warn('SW failed:', err));
+}
+
+// Capture install prompt (shown when browser decides app is installable)
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'flex';
+});
+
+function installPWA() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(result => {
+    if (result.outcome === 'accepted') toast('NEXUS installed!');
+    deferredInstallPrompt = null;
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'none';
+  });
+}
+
+// ── PUSH NOTIFICATIONS ─────────────────────────────────────────
+// Called when MQTT receives an alarm state
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') return;
+  if (Notification.permission !== 'denied') {
+    await Notification.requestPermission();
+  }
+}
+
+function sendLocalNotification(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  navigator.serviceWorker.ready.then(reg => {
+    reg.showNotification(title, {
+      body:     body,
+      icon:     '/nexus-security/icon-192.png',
+      badge:    '/nexus-security/icon-192.png',
+      vibrate:  [200, 100, 200, 100, 200],
+      tag:      'nexus-alert',
+      renotify: true,
+      actions:  [
+        { action: 'disarm', title: 'Disarm' },
+        { action: 'view',   title: 'Open dashboard' }
+      ]
+    });
+  });
+}
+
+// Request permission on first load
+requestNotificationPermission();
 
 // ── INIT ───────────────────────────────────────────────────────
 connectMQTT();
