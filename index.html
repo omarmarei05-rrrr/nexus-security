@@ -7,1266 +7,1227 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NEXUS">
-<meta name="theme-color" content="#0a0e1a">
+<meta name="theme-color" content="#00d4ff">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>NEXUS — Security Command</title>
+<title>NEXUS — Security</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-/* ══════════════════════════════════════════════════
-   NEXUS SECURITY — DESIGN SYSTEM
-   ══════════════════════════════════════════════════ */
 :root {
-  --bg0:#060810; --bg1:#0a0e1a; --bg2:#0d1220; --bg3:#111828; --bg4:#162030;
-  --border:rgba(0,210,255,0.08); --border2:rgba(0,210,255,0.18); --border3:rgba(0,210,255,0.3);
-  --cyan:#00d2ff; --cyan-glow:rgba(0,210,255,0.12); --cyan-deep:rgba(0,210,255,0.05);
-  --blue:#0066ff; --blue-glow:rgba(0,102,255,0.15);
-  --red:#ff2d55; --red-dim:rgba(255,45,85,0.7); --red-glow:rgba(255,45,85,0.1);
-  --green:#00e676; --green-dim:rgba(0,230,118,0.7); --green-glow:rgba(0,230,118,0.08);
-  --amber:#ffb300; --amber-glow:rgba(255,179,0,0.1);
-  --text:#d0e4f0; --text2:#7090a8; --text3:#3a5468;
-  --mono:'Share Tech Mono',monospace; --head:'Rajdhani',sans-serif; --body:'Exo 2',sans-serif;
+  --bg:      #080c10;
+  --bg2:     #0d1420;
+  --bg3:     #111c2b;
+  --border:  #1a2d44;
+  --accent:  #00d4ff;
+  --accent2: #0077ff;
+  --danger:  #ff3b3b;
+  --warn:    #ffaa00;
+  --ok:      #00e676;
+  --text:    #c8ddf0;
+  --muted:   #4a6a8a;
+  --mono:    'Share Tech Mono', monospace;
+  --body:    'Exo 2', sans-serif;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{height:100%;scroll-behavior:smooth}
-body{
-  min-height:100%;background:var(--bg0);color:var(--text);font-family:var(--body);
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--body); }
+body {
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -5%,rgba(0,102,255,0.07) 0%,transparent 60%),
-    linear-gradient(rgba(0,210,255,0.02) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(0,210,255,0.02) 1px,transparent 1px);
-  background-size:100% 100%,60px 60px,60px 60px;
-  background-attachment:fixed;
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:var(--bg1)}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.shell { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
 
-/* ══ LOGIN SCREEN ══════════════════════════════════ */
-#login-screen{
-  position:fixed;inset:0;z-index:9999;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:20px;
-  background:var(--bg0);
+/* ── HEADER ─────────────────────────────────────────────────── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px; margin-bottom: 24px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  position: relative; overflow: hidden;
+}
+header::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scanline 3s linear infinite;
+}
+@keyframes scanline { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+.logo { font-family: var(--mono); font-size: 22px; color: var(--accent); letter-spacing: 4px; }
+.logo span { color: var(--muted); }
+.header-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.header-meta .uptime { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* Session info in header */
+.session-info {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;
+}
+.role-badge {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
+  padding: 3px 10px; border: 1px solid;
+}
+.role-badge.admin { color: var(--warn); border-color: var(--warn); background: rgba(255,170,0,0.08); }
+.role-badge.user  { color: var(--accent); border-color: var(--accent); background: rgba(0,212,255,0.08); }
+.user-label {
+  font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 1px;
+}
+.logout-btn {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+  padding: 4px 10px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: all 0.2s;
+}
+.logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+/* MQTT status pill */
+#mqtt-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
+  padding: 4px 10px; border: 1px solid var(--border);
+}
+#mqtt-status.connected  { color: var(--ok);    border-color: var(--ok); }
+#mqtt-status.connecting { color: var(--warn);  border-color: var(--warn); }
+#mqtt-status.error      { color: var(--danger);border-color: var(--danger); }
+#mqtt-dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+#mqtt-status.connected  #mqtt-dot { animation: blink 2s ease-in-out infinite; }
+#mqtt-status.connecting #mqtt-dot { animation: blink 0.6s step-end infinite; }
+
+/* Alert Banner */
+#alert-banner {
+  display: none; padding: 14px 20px; margin-bottom: 20px;
+  background: rgba(255,59,59,0.12); border: 1px solid var(--danger);
+  font-family: var(--mono); font-size: 14px; color: var(--danger);
+  letter-spacing: 2px; text-align: center;
+  animation: pulse-border 1s ease-in-out infinite;
+}
+@keyframes pulse-border { 0%,100%{border-color:var(--danger)} 50%{border-color:rgba(255,59,59,0.3)} }
+#alert-banner.show { display: block; }
+
+/* Grid */
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 20px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin-bottom: 20px; }
+@media(max-width:700px){ .grid-3,.grid-2 { grid-template-columns: 1fr; } }
+
+/* Cards */
+.card {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 18px 20px; position: relative; overflow: hidden;
+}
+.card::after {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%; background: var(--accent);
+}
+.card.danger::after { background: var(--danger); }
+.card.ok::after     { background: var(--ok); }
+.card-label {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 3px; text-transform: uppercase; margin-bottom: 10px;
+}
+.card-value { font-size: 28px; font-weight: 700; letter-spacing: 1px; line-height: 1; }
+.card-sub   { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+/* Status indicators */
+.status-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.status-row:last-child { border-bottom: none; }
+.status-name { font-size: 14px; }
+.dot { width:8px; height:8px; border-radius:50%; background:var(--muted); margin-right:8px; display:inline-block; }
+.dot.ok     { background:var(--ok);     box-shadow:0 0 6px var(--ok); }
+.dot.danger { background:var(--danger); box-shadow:0 0 6px var(--danger); animation:blink 0.8s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.badge {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
+  padding: 3px 10px; border: 1px solid;
+}
+.badge.ok     { color:var(--ok);     border-color:var(--ok);     background:rgba(0,230,118,0.08); }
+.badge.danger { color:var(--danger); border-color:var(--danger); background:rgba(255,59,59,0.08); }
+.badge.warn   { color:var(--warn);   border-color:var(--warn);   background:rgba(255,170,0,0.08); }
+.badge.off    { color:var(--muted);  border-color:var(--border);  background:transparent; }
+
+/* Section title */
+.sec-title {
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  letter-spacing: 4px; text-transform: uppercase;
+  margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+
+/* Mode display */
+.mode-display {
+  padding: 24px; text-align: center;
+  background: var(--bg3); border: 1px solid var(--border);
+  margin-bottom: 20px; position: relative; overflow: hidden;
+}
+.mode-display .mode-label {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  letter-spacing: 4px; text-transform: uppercase; margin-bottom: 10px;
+}
+.mode-display .mode-value {
+  font-family: var(--mono); font-size: 36px; font-weight: 400; letter-spacing: 8px;
+}
+.mode-display.armed    .mode-value { color:var(--danger); text-shadow:0 0 20px rgba(255,59,59,0.4); }
+.mode-display.disarmed .mode-value { color:var(--ok);     text-shadow:0 0 20px rgba(0,230,118,0.3); }
+.mode-display.alarm    .mode-value { color:var(--warn);   text-shadow:0 0 20px rgba(255,170,0,0.4); animation:flicker 0.5s infinite; }
+@keyframes flicker { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+/* Arm button */
+.arm-wrap { margin-bottom: 20px; }
+#arm-btn {
+  width:100%; padding:20px; border:none; cursor:pointer;
+  font-family:var(--mono); font-size:18px; letter-spacing:6px;
+  transition:all 0.2s; position:relative; overflow:hidden;
+}
+#arm-btn.arm    { background:rgba(255,59,59,0.15); color:var(--danger); border:1px solid var(--danger); }
+#arm-btn.disarm { background:rgba(0,230,118,0.15); color:var(--ok);     border:1px solid var(--ok); }
+#arm-btn:active { transform:scale(0.99); }
+#arm-btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* Inputs */
+.field { margin-bottom: 14px; }
+.field label {
+  display:block; font-family:var(--mono); font-size:10px;
+  color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:6px;
+}
+.field input, .field select {
+  width:100%; padding:10px 14px;
+  background:var(--bg3); border:1px solid var(--border); color:var(--text);
+  font-family:var(--mono); font-size:13px; outline:none; transition:border-color 0.2s;
+  -webkit-appearance: none; appearance: none;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field input::placeholder { color: var(--muted); }
+.field select option { background: var(--bg2); color: var(--text); }
+
+/* Buttons */
+.btn-row { display:flex; gap:10px; }
+.btn {
+  padding:10px 18px; border:1px solid var(--border); background:var(--bg3);
+  color:var(--text); font-family:var(--mono); font-size:12px;
+  letter-spacing:2px; cursor:pointer; transition:all 0.2s; flex:1;
+}
+.btn:hover  { border-color:var(--accent); color:var(--accent); }
+.btn:active { transform:scale(0.98); }
+.btn.primary { border-color:var(--accent2); color:var(--accent); background:rgba(0,119,255,0.1); }
+.btn.primary:hover { background:rgba(0,119,255,0.2); }
+
+/* Event log */
+#log-list {
+  font-family:var(--mono); font-size:12px; color:var(--muted);
+  max-height:220px; overflow-y:auto; line-height:2;
+}
+#log-list .log-entry { padding:4px 0; border-bottom:1px solid rgba(26,45,68,0.5); }
+#log-list .log-entry:first-child { color:var(--text); }
+#log-list .log-entry.alert-log { color:var(--danger); }
+#log-list .log-entry.ok-log    { color:var(--ok); }
+
+/* Toast */
+#toast {
+  position:fixed; bottom:24px; right:24px;
+  padding:12px 20px; background:var(--bg2);
+  border:1px solid var(--accent); font-family:var(--mono);
+  font-size:12px; color:var(--accent); letter-spacing:1px;
+  opacity:0; transform:translateY(10px);
+  transition:opacity 0.3s, transform 0.3s; pointer-events:none; z-index:999;
+}
+#toast.show { opacity:1; transform:translateY(0); }
+
+/* Config feedback */
+.cfg-status {
+  font-family:var(--mono); font-size:10px; margin-top:8px;
+  padding:6px 10px; border:1px solid var(--border);
+  background:var(--bg3); color:var(--muted); text-align:center;
+  letter-spacing:1px; display:none;
+}
+.cfg-status.show { display:block; }
+.cfg-status.ok  { color:var(--ok);    border-color:var(--ok); }
+.cfg-status.err { color:var(--danger);border-color:var(--danger); }
+
+/* ── READ-ONLY OVERLAY for USER role ────────────────────────── */
+.admin-only { transition: opacity 0.3s; }
+.admin-only.locked {
+  opacity: 0.35; pointer-events: none; user-select: none;
+  position: relative;
+}
+.admin-only.locked::after {
+  content: 'ADMIN ONLY';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+  color: var(--muted); background: rgba(8,12,16,0.5);
+}
+
+/* ══ LOGIN SCREEN ════════════════════════════════════════════════ */
+#login-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
   background-image:
-    radial-gradient(ellipse 70% 40% at 50% 0%,rgba(0,102,255,0.09) 0%,transparent 60%),
-    linear-gradient(rgba(0,210,255,0.02) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(0,210,255,0.02) 1px,transparent 1px);
-  background-size:100% 100%,60px 60px,60px 60px;
-  transition:opacity 0.5s,transform 0.5s;
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 20px;
+  transition: opacity 0.4s, transform 0.4s;
 }
-#login-screen.hidden{opacity:0;pointer-events:none;transform:scale(1.03)}
-
-.login-brand{text-align:center;margin-bottom:36px}
-.login-logo{
-  font-family:var(--head);font-size:52px;font-weight:700;
-  color:var(--cyan);letter-spacing:12px;line-height:1;
-  text-shadow:0 0 50px rgba(0,210,255,0.35);
-}
-.login-logo span{color:var(--text3)}
-.login-tagline{
-  font-family:var(--mono);font-size:10px;color:var(--text3);
-  letter-spacing:5px;margin-top:10px;
+#login-screen.hidden {
+  opacity: 0; pointer-events: none; transform: scale(1.03);
 }
 
-.login-card{
-  width:100%;max-width:400px;
-  background:var(--bg2);border:1px solid var(--border2);
-  padding:36px 32px;position:relative;overflow:hidden;
-}
-.login-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
-}
-/* Animated corner decorations */
-.login-card::after{
-  content:'';position:absolute;bottom:0;right:0;
-  width:60px;height:60px;
-  border-bottom:1px solid var(--border2);
-  border-right:1px solid var(--border2);
-  pointer-events:none;
+/* Animated grid overlay */
+#login-screen::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, rgba(0,119,255,0.07) 0%, transparent 70%);
+  pointer-events: none;
 }
 
-.login-card-title{
-  font-family:var(--mono);font-size:10px;color:var(--cyan);
-  letter-spacing:4px;text-transform:uppercase;
-  text-align:center;margin-bottom:28px;
+.login-logo {
+  font-family: var(--mono); font-size: 32px;
+  color: var(--accent); letter-spacing: 8px; margin-bottom: 4px;
+  position: relative;
+  text-shadow: 0 0 30px rgba(0,212,255,0.3);
+}
+.login-logo span { color: var(--muted); }
+.login-subtitle {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--muted); letter-spacing: 4px; margin-bottom: 40px;
+}
+
+.login-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  padding: 36px 32px 28px;
+  width: 100%; max-width: 380px;
+  position: relative;
+}
+.login-box::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scanline 3s linear infinite;
+}
+
+.login-title {
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  letter-spacing: 4px; text-transform: uppercase;
+  margin-bottom: 26px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }
 
 /* Role selector */
-.role-selector{
-  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px;
+.role-select-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 22px;
 }
-.role-btn{
-  padding:12px 8px;border:1px solid var(--border);
-  background:transparent;cursor:pointer;transition:all 0.2s;
-  display:flex;flex-direction:column;align-items:center;gap:6px;
+.role-opt {
+  padding: 12px 8px; border: 1px solid var(--border);
+  background: var(--bg3); cursor: pointer;
+  text-align: center; font-family: var(--mono);
+  font-size: 12px; letter-spacing: 2px; color: var(--muted);
+  transition: all 0.2s; user-select: none;
+  -webkit-user-select: none;
 }
-.role-btn:hover{border-color:var(--border2)}
-.role-btn.active{
-  border-color:var(--cyan);background:var(--cyan-deep);
+.role-opt:hover { border-color: var(--accent); color: var(--text); }
+.role-opt.selected.admin-role {
+  border-color: var(--warn); color: var(--warn);
+  background: rgba(255,170,0,0.08);
+  box-shadow: 0 0 12px rgba(255,170,0,0.12);
 }
-.role-icon{font-size:22px;line-height:1}
-.role-name{
-  font-family:var(--mono);font-size:10px;letter-spacing:2px;
-  color:var(--text2);transition:color 0.2s;
+.role-opt.selected.user-role {
+  border-color: var(--accent); color: var(--accent);
+  background: rgba(0,212,255,0.08);
+  box-shadow: 0 0 12px rgba(0,212,255,0.12);
 }
-.role-btn.active .role-name{color:var(--cyan)}
-.role-desc{
-  font-family:var(--mono);font-size:8px;color:var(--text3);
-  letter-spacing:1px;text-align:center;line-height:1.4;
-}
-.role-btn.active .role-desc{color:var(--text2)}
+.role-icon { font-size: 18px; margin-bottom: 4px; display: block; }
 
-/* Form fields */
-.login-field{margin-bottom:16px}
-.login-field label{
-  display:block;font-family:var(--mono);font-size:9px;
-  color:var(--text3);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;
+/* Login fields */
+.login-field { margin-bottom: 16px; position: relative; }
+.login-field label {
+  display: block; font-family: var(--mono); font-size: 10px;
+  color: var(--muted); letter-spacing: 2px;
+  text-transform: uppercase; margin-bottom: 6px;
 }
-.login-input{
-  width:100%;padding:11px 14px;
-  background:var(--bg3);border:1px solid var(--border);
-  color:var(--text);font-family:var(--mono);font-size:13px;
-  outline:none;transition:border-color 0.2s;letter-spacing:1px;
+.login-field input {
+  width: 100%; padding: 12px 14px;
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--mono); font-size: 13px;
+  outline: none; transition: border-color 0.2s;
 }
-.login-input:focus{border-color:var(--border2)}
-.login-input::placeholder{color:var(--text3)}
+.login-field input:focus { border-color: var(--accent); }
+.login-field input::placeholder { color: var(--muted); }
+
+/* Eye toggle for password */
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 44px; }
+.pw-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 14px; padding: 4px; transition: color 0.2s;
+}
+.pw-toggle:hover { color: var(--accent); }
 
 /* Login button */
-.login-btn{
-  width:100%;padding:14px;margin-top:8px;
-  background:transparent;border:1px solid var(--border2);
-  color:var(--cyan);font-family:var(--head);font-size:16px;
-  font-weight:700;letter-spacing:6px;cursor:pointer;
-  transition:all 0.2s;position:relative;overflow:hidden;
+#login-btn {
+  width: 100%; padding: 14px;
+  background: rgba(0,119,255,0.12); border: 1px solid var(--accent2);
+  color: var(--accent); font-family: var(--mono);
+  font-size: 14px; letter-spacing: 6px; cursor: pointer;
+  transition: all 0.2s; margin-top: 8px;
 }
-.login-btn::before{
-  content:'';position:absolute;inset:0;
-  background:var(--cyan);opacity:0;transition:opacity 0.2s;
-}
-.login-btn:hover::before{opacity:0.06}
-.login-btn:hover{box-shadow:0 0 20px rgba(0,210,255,0.1)}
-.login-btn:active{transform:scale(0.99)}
-.login-btn:disabled{opacity:0.4;cursor:not-allowed}
+#login-btn:hover { background: rgba(0,119,255,0.22); box-shadow: 0 0 20px rgba(0,212,255,0.1); }
+#login-btn:active { transform: scale(0.99); }
+#login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+#login-btn.loading { letter-spacing: 3px; }
 
-/* Login status */
-.login-status{
-  font-family:var(--mono);font-size:10px;text-align:center;
-  letter-spacing:2px;margin-top:14px;min-height:16px;
-  transition:color 0.3s;
+/* Error message */
+#login-error {
+  margin-top: 14px; padding: 10px 14px;
+  background: rgba(255,59,59,0.08); border: 1px solid var(--danger);
+  font-family: var(--mono); font-size: 11px; color: var(--danger);
+  letter-spacing: 1px; text-align: center; display: none;
 }
-.login-status.connecting{color:var(--amber)}
-.login-status.error{color:var(--red)}
-.login-status.ok{color:var(--green)}
+#login-error.show { display: block; }
 
-/* Lockout */
-.login-lockout{
-  font-family:var(--mono);font-size:10px;color:var(--red);
-  text-align:center;margin-top:10px;letter-spacing:1px;min-height:14px;
+/* Login footer note */
+.login-note {
+  margin-top: 20px; text-align: center;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 1px; line-height: 1.8;
 }
 
-@keyframes shake{
-  0%,100%{transform:translateX(0)}
-  20%{transform:translateX(-10px)}
-  40%{transform:translateX(10px)}
-  60%{transform:translateX(-7px)}
-  80%{transform:translateX(7px)}
+/* Connecting overlay during MQTT auth */
+#auth-overlay {
+  display: none; position: absolute; inset: 0; z-index: 2;
+  background: rgba(8,12,16,0.85);
+  flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 2px;
 }
-.login-card.shake{animation:shake 0.4s ease}
+#auth-overlay.show { display: flex; }
+.auth-spinner {
+  width: 28px; height: 28px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* ══ TOP BAR ══════════════════════════════════════ */
-.page{max-width:1280px;margin:0 auto;padding:0 20px 60px}
-.topbar{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:20px 0 16px;border-bottom:1px solid var(--border);
-  margin-bottom:24px;position:relative;
+/* ── SENSOR HISTORY CHART ─────────────────────────────────────── */
+.chart-wrap {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 18px 20px; margin-top: 20px; position: relative;
 }
-.topbar::after{
-  content:'';position:absolute;bottom:-1px;left:0;width:140px;height:1px;
-  background:linear-gradient(90deg,var(--cyan),transparent);
+.chart-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
 }
-.topbar-left{display:flex;align-items:center;gap:14px}
-.brand-logo{
-  font-family:var(--head);font-size:30px;font-weight:700;
-  color:var(--cyan);letter-spacing:6px;
-  text-shadow:0 0 25px rgba(0,210,255,0.25);
+.chart-legend {
+  display: flex; gap: 16px; align-items: center;
 }
-.brand-logo span{color:var(--text3)}
-.brand-tag{
-  font-family:var(--mono);font-size:9px;color:var(--text3);
-  letter-spacing:2px;padding:3px 8px;border:1px solid var(--border);
-  background:var(--bg2);
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px;
 }
-/* Role badge in topbar */
-.role-badge{
-  font-family:var(--mono);font-size:9px;letter-spacing:2px;
-  padding:3px 10px;border:1px solid;
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.chart-range { display: flex; gap: 6px; }
+.range-btn {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+  padding: 4px 10px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer; transition: all 0.2s;
 }
-.role-badge.admin{color:var(--cyan);border-color:rgba(0,210,255,0.3);background:var(--cyan-glow)}
-.role-badge.viewer{color:var(--amber);border-color:rgba(255,179,0,0.3);background:var(--amber-glow)}
-
-.topbar-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.topbar-clock{font-family:var(--mono);font-size:13px;color:var(--text2);letter-spacing:2px}
-.mqtt-pill{
-  display:flex;align-items:center;gap:7px;
-  font-family:var(--mono);font-size:10px;letter-spacing:2px;
-  padding:5px 12px;border:1px solid var(--border);background:var(--bg2);transition:all 0.3s;
-}
-.mqtt-pill.connected{border-color:rgba(0,230,118,0.3);color:var(--green);background:var(--green-glow)}
-.mqtt-pill.connecting{border-color:rgba(255,179,0,0.3);color:var(--amber);background:var(--amber-glow)}
-.mqtt-pill.error{border-color:rgba(255,45,85,0.3);color:var(--red);background:var(--red-glow)}
-.mqtt-led{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
-.mqtt-pill.connected .mqtt-led{animation:pulse-led 2s ease-in-out infinite}
-.mqtt-pill.connecting .mqtt-led{animation:blink-led 0.6s step-end infinite}
-@keyframes pulse-led{0%,100%{opacity:1;box-shadow:0 0 4px currentColor}50%{opacity:0.5;box-shadow:none}}
-@keyframes blink-led{0%,100%{opacity:1}50%{opacity:0}}
-.logout-btn{
-  font-family:var(--mono);font-size:10px;letter-spacing:2px;
-  padding:5px 12px;border:1px solid var(--border);
-  background:transparent;color:var(--text3);cursor:pointer;transition:all 0.2s;
-}
-.logout-btn:hover{border-color:var(--red-dim);color:var(--red)}
-
-/* ══ ALERT BANNER ══════════════════════════════════ */
-#alert-banner{
-  display:none;padding:14px 24px;margin-bottom:20px;
-  background:var(--red-glow);border:1px solid var(--red-dim);
-  font-family:var(--mono);font-size:13px;color:var(--red);
-  letter-spacing:3px;text-align:center;position:relative;overflow:hidden;
-}
-#alert-banner::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,var(--red),transparent);
-  animation:sweep 2s linear infinite;
-}
-@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
-#alert-banner.show{display:block;animation:pulse-border 1.2s ease-in-out infinite}
-@keyframes pulse-border{0%,100%{border-color:var(--red-dim)}50%{border-color:rgba(255,45,85,0.15)}}
-
-/* ══ MODE HERO ═════════════════════════════════════ */
-.mode-hero{
-  display:grid;grid-template-columns:1fr auto;align-items:center;
-  gap:20px;padding:28px 32px;margin-bottom:20px;
-  background:var(--bg2);border:1px solid var(--border);
-  position:relative;overflow:hidden;transition:border-color 0.4s;
-}
-.mode-hero::before{
-  content:'';position:absolute;top:0;left:0;bottom:0;width:3px;
-  background:var(--cyan);transition:background 0.4s;
-}
-.mode-hero.armed{border-color:rgba(255,45,85,0.2)}
-.mode-hero.armed::before{background:var(--red)}
-.mode-hero.alarm{border-color:rgba(255,179,0,0.3)}
-.mode-hero.alarm::before{background:var(--amber)}
-.mode-eyebrow{
-  font-family:var(--mono);font-size:9px;color:var(--text3);
-  letter-spacing:4px;text-transform:uppercase;margin-bottom:8px;
-}
-.mode-state{
-  font-family:var(--head);font-size:50px;font-weight:700;
-  letter-spacing:8px;line-height:1;transition:color 0.4s,text-shadow 0.4s;
-}
-.mode-hero.disarmed .mode-state{color:var(--green);text-shadow:0 0 40px rgba(0,230,118,0.2)}
-.mode-hero.armed    .mode-state{color:var(--red);  text-shadow:0 0 40px rgba(255,45,85,0.25)}
-.mode-hero.alarm    .mode-state{color:var(--amber);text-shadow:0 0 40px rgba(255,179,0,0.35);animation:flicker 0.6s infinite}
-@keyframes flicker{0%,100%{opacity:1}45%{opacity:0.75}}
-.mode-sub{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:3px;margin-top:10px}
-.mode-uptime{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:2px}
-
-/* ARM button */
-#arm-btn{
-  min-width:160px;padding:16px 24px;
-  font-family:var(--head);font-size:15px;font-weight:700;
-  letter-spacing:5px;cursor:pointer;transition:all 0.25s;
-  border:1px solid;background:transparent;position:relative;overflow:hidden;
-}
-#arm-btn::before{content:'';position:absolute;inset:0;background:currentColor;opacity:0;transition:opacity 0.2s}
-#arm-btn:hover::before{opacity:0.06}
-#arm-btn:active{transform:scale(0.97)}
-#arm-btn.do-arm{color:var(--red);border-color:var(--red-dim);box-shadow:0 0 20px rgba(255,45,85,0.08)}
-#arm-btn.do-disarm{color:var(--green);border-color:var(--green-dim);box-shadow:0 0 20px rgba(0,230,118,0.08)}
-#arm-btn:disabled{opacity:0.35;cursor:not-allowed}
-
-/* Viewer lock overlay for arm button */
-.viewer-lock{
-  position:relative;
-}
-.viewer-lock::after{
-  content:'VIEW ONLY';
-  position:absolute;inset:0;
-  background:rgba(6,8,16,0.85);
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:3px;
-  border:1px solid var(--border);
-  pointer-events:none;
-}
-
-/* ══ SENSOR GRID ═══════════════════════════════════ */
-.sensor-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;
-}
-@media(max-width:640px){.sensor-grid{grid-template-columns:1fr}}
-.sensor-card{
-  background:var(--bg2);border:1px solid var(--border);
-  padding:20px 22px;position:relative;overflow:hidden;transition:border-color 0.3s;
-}
-.sensor-card.triggered{border-color:rgba(255,45,85,0.3)}
-.sensor-card.triggered.door{border-color:rgba(0,210,255,0.3)}
-.sensor-card.ok{border-color:rgba(0,230,118,0.15)}
-.sensor-card::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
-  background:var(--text3);opacity:0.2;transition:background 0.3s,opacity 0.3s;
-}
-.sensor-card.triggered::after{background:var(--red);opacity:1}
-.sensor-card.triggered.door::after{background:var(--cyan);opacity:1}
-.sensor-card.ok::after{background:var(--green);opacity:0.5}
-.sensor-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.sensor-type{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:3px}
-.sensor-led{width:8px;height:8px;border-radius:50%;background:var(--text3);transition:all 0.3s}
-.sensor-card.triggered .sensor-led{background:var(--red);box-shadow:0 0 8px var(--red);animation:blink-led 0.8s step-end infinite}
-.sensor-card.triggered.door .sensor-led{background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:none}
-.sensor-card.ok .sensor-led{background:var(--green);box-shadow:0 0 6px var(--green);animation:none}
-.sensor-value{
-  font-family:var(--head);font-size:26px;font-weight:700;
-  letter-spacing:2px;line-height:1;color:var(--text2);transition:color 0.3s;
-}
-.sensor-card.triggered .sensor-value{color:var(--red)}
-.sensor-card.triggered.door .sensor-value{color:var(--cyan)}
-.sensor-card.ok .sensor-value{color:var(--green)}
-.sensor-name{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:2px;margin-top:6px}
-.sensor-bg{position:absolute;bottom:-8px;right:-4px;font-size:64px;opacity:0.025;user-select:none;line-height:1}
-
-/* ══ MAIN GRID ═════════════════════════════════════ */
-.main-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;margin-bottom:16px}
-@media(max-width:960px){.main-grid{grid-template-columns:1fr}}
-
-/* ══ PANEL ═════════════════════════════════════════ */
-.panel{background:var(--bg2);border:1px solid var(--border);padding:22px 24px}
-.panel-title{
-  font-family:var(--mono);font-size:10px;color:var(--cyan);
-  letter-spacing:4px;text-transform:uppercase;
-  padding-bottom:14px;margin-bottom:18px;
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;
-}
-.panel-badge{
-  font-size:9px;color:var(--text3);letter-spacing:1px;
-  padding:2px 8px;border:1px solid var(--border);background:var(--bg3);
-}
-
-/* ══ CHART ═════════════════════════════════════════ */
-.chart-controls{display:flex;gap:6px;margin-bottom:16px}
-.range-btn{
-  font-family:var(--mono);font-size:9px;letter-spacing:2px;
-  padding:4px 12px;border:1px solid var(--border);
-  background:transparent;color:var(--text3);cursor:pointer;transition:all 0.2s;
-}
-.range-btn:hover{border-color:var(--border2);color:var(--cyan)}
-.range-btn.active{border-color:var(--border2);color:var(--cyan);background:var(--cyan-glow)}
-.chart-canvas-wrap{position:relative;height:180px}
-.chart-legend{display:flex;gap:16px;margin-top:12px;flex-wrap:wrap}
-.legend-item{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px}
-.legend-pip{width:20px;height:2px;border-radius:1px}
-.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
-.stat-box{background:var(--bg3);border:1px solid var(--border);padding:12px 14px;text-align:center}
-.stat-val{font-family:var(--head);font-size:24px;font-weight:700;color:var(--cyan);line-height:1}
-.stat-lbl{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:2px;margin-top:4px}
-
-/* ══ STATUS LIST ═══════════════════════════════════ */
-.status-list{display:flex;flex-direction:column}
-.status-row{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:11px 0;border-bottom:1px solid var(--border);
-}
-.status-row:last-child{border-bottom:none}
-.status-name{font-family:var(--mono);font-size:11px;color:var(--text2);letter-spacing:1px}
-.badge{font-family:var(--mono);font-size:9px;letter-spacing:2px;padding:3px 10px;border:1px solid}
-.badge.ok{color:var(--green);border-color:rgba(0,230,118,0.3);background:rgba(0,230,118,0.06)}
-.badge.danger{color:var(--red);border-color:rgba(255,45,85,0.3);background:rgba(255,45,85,0.06)}
-.badge.warn{color:var(--amber);border-color:rgba(255,179,0,0.3);background:rgba(255,179,0,0.06)}
-.badge.off{color:var(--text3);border-color:var(--border);background:transparent}
-.badge.info{color:var(--cyan);border-color:rgba(0,210,255,0.3);background:rgba(0,210,255,0.06)}
-
-/* ══ SETTINGS FORM ═════════════════════════════════ */
-/* Hidden for viewer role */
-.admin-only{transition:opacity 0.3s}
-.viewer-mode .admin-only{opacity:0.3;pointer-events:none;user-select:none;filter:blur(1px)}
-.viewer-mode .admin-only .field input{cursor:not-allowed}
-
-.field{margin-bottom:14px}
-.field label{
-  display:block;font-family:var(--mono);font-size:9px;
-  color:var(--text3);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;
-}
-.field input{
-  width:100%;padding:10px 14px;
-  background:var(--bg3);border:1px solid var(--border);color:var(--text);
-  font-family:var(--mono);font-size:12px;outline:none;transition:border-color 0.2s;
-}
-.field input:focus{border-color:var(--border2)}
-.field input::placeholder{color:var(--text3)}
-.btn-row{display:flex;gap:8px}
-.btn{
-  flex:1;padding:10px 16px;border:1px solid var(--border);
-  background:transparent;color:var(--text2);
-  font-family:var(--mono);font-size:10px;letter-spacing:2px;
-  cursor:pointer;transition:all 0.2s;
-}
-.btn:hover{border-color:var(--border2);color:var(--cyan)}
-.btn:active{transform:scale(0.98)}
-.btn.primary{border-color:rgba(0,102,255,0.4);color:var(--cyan);background:var(--blue-glow)}
-.btn.primary:hover{background:rgba(0,102,255,0.2)}
-.cfg-status{
-  font-family:var(--mono);font-size:9px;margin-top:10px;
-  padding:6px 12px;border:1px solid var(--border);
-  background:var(--bg3);color:var(--text3);text-align:center;
-  letter-spacing:2px;display:none;
-}
-.cfg-status.show{display:block}
-.cfg-status.ok{color:var(--green);border-color:rgba(0,230,118,0.3)}
-.cfg-status.err{color:var(--red);border-color:rgba(255,45,85,0.3)}
-
-/* viewer notice */
-.viewer-notice{
-  font-family:var(--mono);font-size:9px;color:var(--amber);
-  letter-spacing:2px;padding:8px 12px;
-  border:1px solid rgba(255,179,0,0.2);background:var(--amber-glow);
-  text-align:center;margin-bottom:14px;display:none;
-}
-.viewer-notice.show{display:block}
-
-/* ══ LOG ═══════════════════════════════════════════ */
-.log-list{
-  font-family:var(--mono);font-size:11px;color:var(--text3);
-  max-height:200px;overflow-y:auto;line-height:1;
-}
-.log-entry{
-  padding:7px 0;border-bottom:1px solid var(--border);
-  display:flex;align-items:baseline;gap:10px;
-}
-.log-entry:last-child{border-bottom:none}
-.log-entry:first-child .log-text{color:var(--text2)}
-.log-time{color:var(--text3);flex-shrink:0;font-size:10px}
-.log-text{flex:1}
-.log-entry.alert-log .log-text{color:var(--red)}
-.log-entry.ok-log .log-text{color:var(--green)}
-.log-entry.info-log .log-text{color:var(--cyan)}
-
-/* ══ TOAST ═════════════════════════════════════════ */
-#toast{
-  position:fixed;bottom:28px;right:28px;
-  padding:12px 20px;background:var(--bg3);
-  border:1px solid var(--border2);font-family:var(--mono);
-  font-size:11px;color:var(--cyan);letter-spacing:2px;
-  opacity:0;transform:translateY(12px);
-  transition:opacity 0.3s,transform 0.3s;pointer-events:none;z-index:998;
-}
-#toast.show{opacity:1;transform:translateY(0)}
-
-/* ══ INSTALL BANNER ════════════════════════════════ */
-#install-banner{
-  display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:var(--bg3);border:1px solid var(--border2);
-  padding:12px 20px;align-items:center;gap:14px;
-  font-family:var(--mono);font-size:11px;color:var(--text);
-  letter-spacing:1px;z-index:997;max-width:360px;width:90%;
-}
-#install-banner.show{display:flex}
-.install-btn{
-  background:var(--cyan);color:var(--bg0);border:none;
-  padding:6px 14px;font-family:var(--mono);font-size:10px;
-  letter-spacing:2px;cursor:pointer;flex-shrink:0;
-}
-.install-close{background:transparent;color:var(--text3);border:none;cursor:pointer;font-size:18px;line-height:1}
+.range-btn:hover  { border-color: var(--accent); color: var(--accent); }
+.range-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.08); }
+.chart-canvas-wrap { position: relative; height: 160px; }
+.chart-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 14px; }
+.chart-stat { background: var(--bg3); border: 1px solid var(--border); padding: 10px 12px; text-align: center; }
+.chart-stat-val { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--accent); line-height: 1; }
+.chart-stat-lbl { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-top: 4px; text-transform: uppercase; }
+@media(max-width:500px){ .chart-stats { grid-template-columns: repeat(2,1fr); } }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════
-     LOGIN SCREEN
-     ══════════════════════════════════════════════════ -->
+<!-- ══ LOGIN SCREEN ═══════════════════════════════════════════════ -->
 <div id="login-screen">
-  <div class="login-brand">
-    <div class="login-logo">NEXUS<span>SEC</span></div>
-    <div class="login-tagline">SECURITY COMMAND CENTER</div>
-  </div>
+  <div class="login-logo">NEXUS<span>SEC</span></div>
+  <div class="login-subtitle">SECURITY CONTROL SYSTEM</div>
 
-  <div class="login-card" id="login-card">
-    <div class="login-card-title">SELECT ROLE &amp; SIGN IN</div>
+  <div class="login-box">
+    <div id="auth-overlay">
+      <div class="auth-spinner"></div>
+      <span id="auth-status-text">AUTHENTICATING...</span>
+    </div>
+
+    <div class="login-title">SYSTEM ACCESS</div>
 
     <!-- Role selector -->
-    <div class="role-selector">
-      <button class="role-btn active" id="role-admin" onclick="selectRole('admin')">
-        <div class="role-icon">⚙</div>
-        <div class="role-name">ADMIN</div>
-        <div class="role-desc">Full control<br>Arm · Disarm · Config</div>
-      </button>
-      <button class="role-btn" id="role-viewer" onclick="selectRole('viewer')">
-        <div class="role-icon">◉</div>
-        <div class="role-name">VIEWER</div>
-        <div class="role-desc">Read only<br>Monitor sensors &amp; logs</div>
-      </button>
+    <div class="role-select-row">
+      <div class="role-opt admin-role selected" id="role-admin" onclick="selectRole('admin')">
+        <span class="role-icon">⚙</span>ADMIN
+      </div>
+      <div class="role-opt user-role" id="role-user" onclick="selectRole('user')">
+        <span class="role-icon">👁</span>USER
+      </div>
     </div>
 
-    <!-- Credentials -->
     <div class="login-field">
       <label>Username</label>
-      <input class="login-input" type="text" id="login-user"
-             placeholder="Enter username" autocomplete="username" spellcheck="false">
+      <input type="text" id="login-username" placeholder="enter username" autocomplete="username" autocapitalize="none" spellcheck="false">
     </div>
+
     <div class="login-field">
       <label>Password</label>
-      <input class="login-input" type="password" id="login-pass"
-             placeholder="Enter password" autocomplete="current-password">
+      <div class="pw-wrap">
+        <input type="password" id="login-password" placeholder="enter password" autocomplete="current-password">
+        <button class="pw-toggle" onclick="togglePwVis()" tabindex="-1" id="pw-eye">👁</button>
+      </div>
     </div>
 
-    <button class="login-btn" id="login-btn" onclick="doLogin()">CONNECT</button>
+    <button id="login-btn" onclick="attemptLogin()">CONNECT</button>
+    <div id="login-error"></div>
 
-    <div class="login-status" id="login-status"></div>
-    <div class="login-lockout" id="login-lockout"></div>
+    <div class="login-note">
+      Credentials are verified against the HiveMQ broker.<br>
+      Admins have full control. Users have read-only access.
+    </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     MAIN DASHBOARD
-     ══════════════════════════════════════════════════ -->
-<div class="page" id="dashboard" style="display:none">
+<!-- ══ DASHBOARD ══════════════════════════════════════════════════ -->
+<div class="shell">
 
-  <!-- Top Bar -->
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="brand-logo">NEXUS<span>SEC</span></div>
-      <div class="brand-tag">v3.0 MQTT</div>
-      <div class="role-badge admin" id="role-badge">ADMIN</div>
+  <header>
+    <div>
+      <div class="logo">NEXUS<span>SEC</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono);">SECURITY CONTROL SYSTEM v3.1 — MQTT CLOUD</div>
     </div>
-    <div class="topbar-right">
-      <div class="topbar-clock" id="clock-display">00:00:00</div>
-      <div class="mqtt-pill connecting" id="mqtt-pill">
-        <div class="mqtt-led"></div>
-        <span id="mqtt-label">CONNECTING</span>
+    <div class="header-meta">
+      <div class="uptime" id="uptime-display">UP: 00:00:00</div>
+      <div class="session-info">
+        <span class="user-label" id="session-user-label"></span>
+        <span class="role-badge" id="session-role-badge"></span>
+        <div id="mqtt-status" class="connecting">
+          <span id="mqtt-dot"></span>
+          <span id="mqtt-label">CONNECTING...</span>
+        </div>
+        <button class="logout-btn" onclick="logout()">LOGOUT</button>
       </div>
-      <button class="logout-btn" onclick="doLogout()">&#9655; LOGOUT</button>
     </div>
-  </div>
+  </header>
 
   <!-- Alert Banner -->
-  <div id="alert-banner">&#9888;&nbsp; INTRUSION DETECTED — ALARM ACTIVE &nbsp;&#9888;</div>
+  <div id="alert-banner">&#9888; INTRUSION DETECTED — ALARM ACTIVE &#9888;</div>
 
-  <!-- Mode Hero -->
-  <div class="mode-hero disarmed" id="mode-hero">
-    <div>
-      <div class="mode-eyebrow">SYSTEM STATUS</div>
-      <div class="mode-state" id="mode-state">DISARMED</div>
-      <div class="mode-sub" id="mode-sub">All sensors nominal — property secure</div>
-    </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px">
-      <div id="arm-btn-wrap">
-        <button id="arm-btn" class="do-arm" onclick="toggleArm()">ARM</button>
-      </div>
-      <div class="mode-uptime" id="uptime-display">UP 00:00:00</div>
-    </div>
+  <!-- Mode Display -->
+  <div class="mode-display disarmed" id="mode-panel">
+    <div class="mode-label">SYSTEM STATUS</div>
+    <div class="mode-value" id="mode-text">DISARMED</div>
   </div>
 
   <!-- Sensor Cards -->
-  <div class="sensor-grid">
-    <div class="sensor-card" id="sys-card">
-      <div class="sensor-header">
-        <div class="sensor-type">System</div>
-        <div class="sensor-led" id="sys-led"></div>
-      </div>
-      <div class="sensor-value" id="sys-val">DISARMED</div>
-      <div class="sensor-name">SECURITY STATE</div>
-      <div class="sensor-bg">⚙</div>
+  <div class="grid-3" style="margin-bottom:20px;">
+    <div class="card ok" id="arm-card">
+      <div class="card-label">System</div>
+      <div class="card-value" id="arm-val" style="font-size:20px;color:var(--ok);">DISARMED</div>
+      <div class="card-sub">SECURITY STATE</div>
     </div>
-    <div class="sensor-card" id="pir-card">
-      <div class="sensor-header">
-        <div class="sensor-type">Motion · PIR</div>
-        <div class="sensor-led" id="pir-led"></div>
+    <div class="card" id="pir-card">
+      <div class="card-label">Motion Sensor</div>
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+        <span class="dot" id="pir-dot"></span>
+        <span class="card-value" id="pir-val" style="font-size:18px;">CLEAR</span>
       </div>
-      <div class="sensor-value" id="pir-val">CLEAR</div>
-      <div class="sensor-name">HC-SR501</div>
-      <div class="sensor-bg">◈</div>
+      <div class="card-sub">PIR — HC-SR501</div>
     </div>
-    <div class="sensor-card door" id="door-card">
-      <div class="sensor-header">
-        <div class="sensor-type">Door · Magnetic</div>
-        <div class="sensor-led ok" id="door-led"></div>
+    <div class="card" id="door-card">
+      <div class="card-label">Door Sensor</div>
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+        <span class="dot" id="door-dot"></span>
+        <span class="card-value" id="door-val" style="font-size:18px;">CLOSED</span>
       </div>
-      <div class="sensor-value ok" id="door-val">CLOSED</div>
-      <div class="sensor-name">REED SWITCH</div>
-      <div class="sensor-bg">▣</div>
+      <div class="card-sub">MAGNETIC SWITCH</div>
     </div>
   </div>
 
-  <!-- Main Grid -->
-  <div class="main-grid">
-
-    <!-- Chart panel -->
-    <div class="panel">
-      <div class="panel-title">
-        Sensor History
-        <span class="panel-badge" id="chart-window-label">LAST 15 MIN</span>
+  <!-- Controls + Settings -->
+  <div class="grid-2">
+    <!-- Control Panel -->
+    <div>
+      <div class="sec-title">Control Panel</div>
+      <!-- ARM button — admin only -->
+      <div class="arm-wrap admin-only" id="arm-section">
+        <button id="arm-btn" class="arm" onclick="toggleArm()">ARM SYSTEM</button>
       </div>
-      <div class="chart-controls">
-        <button class="range-btn active" onclick="setChartRange(15,this,'LAST 15 MIN')">15 MIN</button>
-        <button class="range-btn"        onclick="setChartRange(30,this,'LAST 30 MIN')">30 MIN</button>
-        <button class="range-btn"        onclick="setChartRange(60,this,'LAST 1 HR')">1 HOUR</button>
-      </div>
-      <div class="chart-canvas-wrap">
-        <canvas id="sensor-chart"></canvas>
-      </div>
-      <div class="chart-legend">
-        <div class="legend-item"><div class="legend-pip" style="background:var(--red)"></div>PIR MOTION</div>
-        <div class="legend-item"><div class="legend-pip" style="background:var(--cyan)"></div>DOOR</div>
-        <div class="legend-item"><div class="legend-pip" style="background:var(--amber)"></div>ALARM</div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-box"><div class="stat-val" id="stat-pir">0</div><div class="stat-lbl">PIR events</div></div>
-        <div class="stat-box"><div class="stat-val" id="stat-door">0</div><div class="stat-lbl">Door opens</div></div>
-        <div class="stat-box"><div class="stat-val" id="stat-alarm">0</div><div class="stat-lbl">Alarms</div></div>
+      <div class="card" style="margin-bottom:0;">
+        <div class="status-row">
+          <span class="status-name">Last Action</span>
+          <span class="badge off" id="last-action-badge">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-name">MQTT Broker</span>
+          <span class="badge off" id="broker-badge">HiveMQ Cloud</span>
+        </div>
+        <div class="status-row">
+          <span class="status-name">GSM Module</span>
+          <span class="badge ok">READY</span>
+        </div>
+        <div class="status-row">
+          <span class="status-name">Alert Count</span>
+          <span class="badge off" id="alert-count-badge">0</span>
+        </div>
       </div>
     </div>
 
-    <!-- Right column -->
-    <div style="display:flex;flex-direction:column;gap:16px">
+    <!-- Settings — admin only -->
+    <div class="admin-only" id="settings-section">
+      <div class="sec-title">System Settings</div>
+      <div class="card">
+        <div class="field">
+          <label>Phone Number</label>
+          <input type="tel" id="cfg-phone" placeholder="+201XXXXXXXXX" maxlength="15">
+        </div>
+        <div class="field">
+          <label>Arm Code (4 digits)</label>
+          <input type="password" id="cfg-arm" placeholder="e.g. 1234" maxlength="4" pattern="\d{4}">
+        </div>
+        <div class="field">
+          <label>Disarm Code (4 digits)</label>
+          <input type="password" id="cfg-disarm" placeholder="e.g. 5678" maxlength="4" pattern="\d{4}">
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="saveSettings()">SAVE CONFIG</button>
+          <button class="btn" onclick="testSMS()">TEST SMS</button>
+        </div>
+        <div class="cfg-status" id="cfg-status"></div>
+      </div>
+    </div>
+  </div>
 
-      <!-- System Status -->
-      <div class="panel">
-        <div class="panel-title">System Status</div>
-        <div class="status-list">
-          <div class="status-row">
-            <span class="status-name">LOGGED IN AS</span>
-            <span class="badge info" id="status-user">—</span>
-          </div>
-          <div class="status-row">
-            <span class="status-name">LAST ACTION</span>
-            <span class="badge off" id="last-action">—</span>
-          </div>
-          <div class="status-row">
-            <span class="status-name">MQTT BROKER</span>
-            <span class="badge ok">HiveMQ Cloud</span>
-          </div>
-          <div class="status-row">
-            <span class="status-name">STM32 MCU</span>
-            <span class="badge ok">ACTIVE</span>
-          </div>
-          <div class="status-row">
-            <span class="status-name">GSM MODULE</span>
-            <span class="badge ok">READY</span>
-          </div>
-          <div class="status-row">
-            <span class="status-name">ALERT COUNT</span>
-            <span class="badge off" id="alert-count">0</span>
-          </div>
+  <!-- Sensor History Chart -->
+  <div class="chart-wrap">
+    <div class="chart-header">
+      <div class="sec-title" style="margin-bottom:0;border:none;padding:0;">Sensor History</div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#ff3b3b;"></div>PIR MOTION</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#00d4ff;"></div>DOOR</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ffaa00;"></div>ALARM</div>
+        </div>
+        <div class="chart-range">
+          <button class="range-btn active" onclick="setChartRange(15,this)">15M</button>
+          <button class="range-btn"        onclick="setChartRange(30,this)">30M</button>
+          <button class="range-btn"        onclick="setChartRange(60,this)">1H</button>
         </div>
       </div>
-
-      <!-- Config (admin only) -->
-      <div class="panel" id="config-panel">
-        <div class="panel-title">Configuration</div>
-        <div class="viewer-notice" id="viewer-notice">
-          ⊘ VIEW ONLY — CONFIG DISABLED
-        </div>
-        <div class="admin-only">
-          <div class="field">
-            <label>Phone Number</label>
-            <input type="tel" id="cfg-phone" placeholder="+201XXXXXXXXX" maxlength="15">
-          </div>
-          <div class="field">
-            <label>Arm Code (4 digits)</label>
-            <input type="password" id="cfg-arm" placeholder="••••" maxlength="4">
-          </div>
-          <div class="field">
-            <label>Disarm Code (4 digits)</label>
-            <input type="password" id="cfg-disarm" placeholder="••••" maxlength="4">
-          </div>
-          <div class="btn-row">
-            <button class="btn primary" id="save-btn" onclick="saveSettings()">SAVE</button>
-            <button class="btn"         id="sms-btn"  onclick="testSMS()">TEST SMS</button>
-          </div>
-          <div class="cfg-status" id="cfg-status"></div>
-        </div>
-      </div>
-
+    </div>
+    <div class="chart-canvas-wrap"><canvas id="sensor-chart"></canvas></div>
+    <div class="chart-stats">
+      <div class="chart-stat"><div class="chart-stat-val" id="stat-pir-count">0</div><div class="chart-stat-lbl">PIR triggers</div></div>
+      <div class="chart-stat"><div class="chart-stat-val" id="stat-door-count">0</div><div class="chart-stat-lbl">Door opens</div></div>
+      <div class="chart-stat"><div class="chart-stat-val" id="stat-alarm-count">0</div><div class="chart-stat-lbl">Alarms</div></div>
+      <div class="chart-stat"><div class="chart-stat-val" id="stat-last-event">—</div><div class="chart-stat-lbl">Last event</div></div>
     </div>
   </div>
 
   <!-- Event Log -->
-  <div class="panel log-wrap">
-    <div class="panel-title">
-      Event Log
-      <button class="btn" style="flex:0;padding:4px 12px;font-size:9px;" onclick="clearLog()">CLEAR</button>
+  <div style="margin-top:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+      <div class="sec-title" style="margin-bottom:0;border:none;padding:0;">Event Log</div>
+      <button class="btn" style="flex:0;padding:6px 14px;font-size:10px;" onclick="clearLog()">CLEAR</button>
     </div>
-    <div class="log-list" id="log-list">
-      <div class="log-entry">
-        <span class="log-time">--:--:--</span>
-        <span class="log-text">Waiting for connection...</span>
-      </div>
+    <div id="log-list">
+      <div class="log-entry" style="color:var(--muted);">— waiting for MQTT connection... —</div>
     </div>
   </div>
-
-</div><!-- end .page -->
-
-<div id="toast"></div>
-<div id="install-banner">
-  <span>Install NEXUS on home screen</span>
-  <button class="install-btn" onclick="installPWA()">INSTALL</button>
-  <button class="install-close" onclick="this.parentElement.classList.remove('show')">&#215;</button>
 </div>
+<div id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════════════════════════════
-//  NEXUS SECURITY — DASHBOARD SCRIPT
-//  Role-based login: credentials validated by HiveMQ directly.
-//  Admin  → uses admin credentials → can publish commands
-//  Viewer → uses viewer credentials → subscribe only, no commands
-// ══════════════════════════════════════════════════════════════════
-
-// ── MQTT BROKER CONFIG ────────────────────────────────────────────
-// Only the host and port here. Credentials come from login form.
+// ── MQTT BROKER CONFIG ─────────────────────────────────────────
 const MQTT_HOST   = 'nexus-4408dcb8.a01.euc1.aws.hivemq.cloud';
 const MQTT_PORT   = 8884;
+const CLIENT_ID   = 'nexus-dashboard-' + Math.random().toString(16).slice(2, 8);
+
 const TOPIC_STATE = 'esp32/nexus/state';
 const TOPIC_LOG   = 'esp32/nexus/log';
 const TOPIC_CMD   = 'esp32/nexus/cmd';
 
-// ── ROLE DEFINITIONS ──────────────────────────────────────────────
-// Map HiveMQ usernames to roles.
-// Add your viewer username here to grant viewer access.
-// Any username not listed defaults to admin if login succeeds.
-const ROLE_MAP = {
-  'omarmarei': 'admin',   // ← your admin account
-  'omarsaleh':    'viewer',
-  'omarkhaled':    'viewer',// ← create this in HiveMQ Access Management
-};
+const SESSION_KEY    = 'nexus_session_v2';
+const SESSION_MINS   = 30;   // auto-lock after 30 min idle
 
-// ── RUNTIME STATE ─────────────────────────────────────────────────
-let mqttClient   = null;
-let currentRole  = null;   // 'admin' | 'viewer'
-let currentUser  = null;
-let state        = { armed:false, pir:false, door:false, alarm:false };
-let uptimeSecs   = 0;
-let alertCount   = 0;
-let loginLockoutTimer = null;
-let loginAttempts     = 0;
-const MAX_LOGIN_ATTEMPTS = 5;
+// ── STATE ──────────────────────────────────────────────────────
+let appState    = { armed: false, pir: false, door: false, alarm: false };
+let alertCount  = 0;
+let uptimeSecs  = 0;
+let mqttClient  = null;
+let currentRole = 'user';    // 'admin' | 'user'
+let currentUser = '';
+let inactivityTimer = null;
 
-// ── CLOCK ─────────────────────────────────────────────────────────
+// ── UPTIME ─────────────────────────────────────────────────────
 setInterval(() => {
   uptimeSecs++;
-  const h = String(Math.floor(uptimeSecs/3600)).padStart(2,'0');
-  const m = String(Math.floor((uptimeSecs%3600)/60)).padStart(2,'0');
-  const s = String(uptimeSecs%60).padStart(2,'0');
-  document.getElementById('uptime-display').textContent = 'UP '+h+':'+m+':'+s;
-  const now = new Date();
-  document.getElementById('clock-display').textContent =
-    now.getHours().toString().padStart(2,'0')+':'+
-    now.getMinutes().toString().padStart(2,'0')+':'+
-    now.getSeconds().toString().padStart(2,'0');
+  const h = String(Math.floor(uptimeSecs / 3600)).padStart(2,'0');
+  const m = String(Math.floor((uptimeSecs % 3600) / 60)).padStart(2,'0');
+  const s = String(uptimeSecs % 60).padStart(2,'0');
+  document.getElementById('uptime-display').textContent = 'UP: ' + h + ':' + m + ':' + s;
 }, 1000);
 
-// ══ LOGIN ════════════════════════════════════════════════════════
-let selectedRole = 'admin';
+// ══ LOGIN SYSTEM ══════════════════════════════════════════════
+let selectedRole = 'admin';  // default role selection on login screen
 
 function selectRole(role) {
   selectedRole = role;
-  document.getElementById('role-admin').classList.toggle('active', role==='admin');
-  document.getElementById('role-viewer').classList.toggle('active', role==='viewer');
+  document.getElementById('role-admin').className =
+    'role-opt admin-role' + (role === 'admin' ? ' selected' : '');
+  document.getElementById('role-user').className =
+    'role-opt user-role' + (role === 'user' ? ' selected' : '');
 }
 
-function doLogin() {
-  if (loginAttempts >= MAX_LOGIN_ATTEMPTS) return;
+function togglePwVis() {
+  const inp = document.getElementById('login-password');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
 
-  const user = document.getElementById('login-user').value.trim();
-  const pass = document.getElementById('login-pass').value;
+// Attempt login: authenticate by opening an MQTT connection with provided credentials
+function attemptLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
 
-  if (!user || !pass) {
-    setLoginStatus('ENTER USERNAME AND PASSWORD', 'error');
-    return;
-  }
+  if (!username) { showLoginError('Username is required.'); return; }
+  if (!password) { showLoginError('Password is required.'); return; }
 
-  setLoginStatus('CONNECTING TO BROKER...', 'connecting');
-  document.getElementById('login-btn').disabled = true;
+  setLoginLoading(true);
+  showLoginError('');
 
-  const clientId = 'nexus-' + selectedRole + '-' + Math.random().toString(16).slice(2,8);
+  // Attempt MQTT connection with provided credentials.
+  // Success = credentials accepted by broker → login granted.
+  // Failure (onFailure / onConnectionLost immediately) = rejected.
+  const testClient = new Paho.Client(
+    MQTT_HOST, MQTT_PORT, '/mqtt',
+    'nexus-auth-' + Math.random().toString(16).slice(2, 8)
+  );
 
-  // Attempt real MQTT connection with user-supplied credentials.
-  // HiveMQ itself validates them — wrong credentials → onFailure fires.
-  const client = new Paho.Client(MQTT_HOST, MQTT_PORT, '/mqtt', clientId);
+  let authResolved = false;
 
-  client.connect({
+  const authTimeout = setTimeout(() => {
+    if (!authResolved) {
+      authResolved = true;
+      try { testClient.disconnect(); } catch(e) {}
+      setLoginLoading(false);
+      showLoginError('Connection timed out. Check broker or credentials.');
+    }
+  }, 10000);
+
+  testClient.onConnectionLost = (resp) => {
+    if (!authResolved) {
+      // Fired immediately on auth failure in Paho
+      authResolved = true;
+      clearTimeout(authTimeout);
+      setLoginLoading(false);
+      showLoginError('Authentication failed. Invalid username or password.');
+    }
+  };
+
+  testClient.connect({
     useSSL:            true,
-    userName:          user,
-    password:          pass,
-    keepAliveInterval: 60,
+    userName:          username,
+    password:          password,
+    keepAliveInterval: 30,
     cleanSession:      true,
-    timeout:           10,
-
     onSuccess: () => {
-      // ── Login accepted by HiveMQ ──
-      loginAttempts = 0;
-
-      // Determine role: check ROLE_MAP first, else use selected role
-      const mappedRole = ROLE_MAP[user] || selectedRole;
-      currentRole = mappedRole;
-      currentUser = user;
-      mqttClient  = client;
-
-      // Wire up message handler now that we're connected
-      client.onConnectionLost = () => {
-        setMqttPill('error','OFFLINE');
-        toast('Connection lost');
-        // Don't auto-reconnect — return to login
-        setTimeout(doLogout, 2000);
-      };
-      client.onMessageArrived = onMqttMessage;
-
-      // Subscribe to topics
-      client.subscribe(TOPIC_STATE);
-      client.subscribe(TOPIC_LOG);
-
-      // Show dashboard
-      showDashboard();
+      if (!authResolved) {
+        authResolved = true;
+        clearTimeout(authTimeout);
+        // Authentication succeeded — disconnect test client and open real one
+        try { testClient.disconnect(); } catch(e) {}
+        onLoginSuccess(username, password, selectedRole);
+      }
     },
-
     onFailure: (err) => {
-      // ── Login rejected (wrong credentials or network) ──
-      document.getElementById('login-btn').disabled = false;
-      loginAttempts++;
-
-      if (err.errorCode === 4 || err.errorCode === 5) {
-        // Error codes 4/5 = bad credentials from broker
-        const rem = MAX_LOGIN_ATTEMPTS - loginAttempts;
-        if (rem <= 0) {
-          startLoginLockout();
+      if (!authResolved) {
+        authResolved = true;
+        clearTimeout(authTimeout);
+        setLoginLoading(false);
+        const msg = err && err.errorMessage ? err.errorMessage : '';
+        if (msg.toLowerCase().includes('not authorized') || err.errorCode === 5) {
+          showLoginError('Access denied. Invalid credentials.');
         } else {
-          setLoginStatus(
-            'INVALID CREDENTIALS — ' + rem + ' ATTEMPT' + (rem===1?'':'S') + ' LEFT',
-            'error'
-          );
-          shakeCard();
+          showLoginError('Connection failed: ' + (msg || 'unknown error'));
         }
-      } else {
-        setLoginStatus('CONNECTION ERROR — CHECK NETWORK', 'error');
-        shakeCard();
       }
     }
   });
 }
 
-function showDashboard() {
-  // Hide login, show dashboard
-  const loginScr = document.getElementById('login-screen');
-  loginScr.classList.add('hidden');
-  setTimeout(() => { loginScr.style.display='none'; }, 500);
-
-  const dash = document.getElementById('dashboard');
-  dash.style.display = 'block';
-
-  // Apply role to UI
-  applyRole(currentRole, currentUser);
-
-  setMqttPill('connected','ONLINE');
-  toast('Welcome, ' + currentUser + ' [' + currentRole.toUpperCase() + ']');
-
-  startChart();
-  requestNotificationPermission();
-}
-
-function applyRole(role, user) {
-  // Role badge
-  const badge = document.getElementById('role-badge');
-  badge.textContent = role.toUpperCase();
-  badge.className   = 'role-badge ' + role;
-
-  // Status panel
-  document.getElementById('status-user').textContent = user;
-
-  if (role === 'viewer') {
-    // Viewer: disable arm button, disable config form
-    const btn = document.getElementById('arm-btn');
-    btn.disabled = true;
-    document.getElementById('arm-btn-wrap').classList.add('viewer-lock');
-
-    // Grey out config
-    document.getElementById('dashboard').classList.add('viewer-mode');
-    document.getElementById('viewer-notice').classList.add('show');
-
-    // Disable config inputs/buttons
-    ['cfg-phone','cfg-arm','cfg-disarm'].forEach(id => {
-      document.getElementById(id).disabled = true;
-    });
-    document.getElementById('save-btn').disabled = true;
-    document.getElementById('sms-btn').disabled  = true;
-
-    toast('Viewer mode — monitoring only');
-  }
-}
-
-function setLoginStatus(msg, type) {
-  const el = document.getElementById('login-status');
-  el.textContent = msg;
-  el.className   = 'login-status ' + (type||'');
-}
-
-function shakeCard() {
-  const card = document.getElementById('login-card');
-  card.classList.add('shake');
-  setTimeout(() => card.classList.remove('shake'), 500);
-}
-
-function startLoginLockout() {
-  const duration = 30000; // 30s
-  const until    = Date.now() + duration;
-  document.getElementById('login-btn').disabled = true;
-  setLoginStatus('TOO MANY FAILED ATTEMPTS', 'error');
-
-  clearInterval(loginLockoutTimer);
-  loginLockoutTimer = setInterval(() => {
-    const left = Math.ceil((until - Date.now()) / 1000);
-    if (left <= 0) {
-      clearInterval(loginLockoutTimer);
-      loginAttempts = 0;
-      document.getElementById('login-btn').disabled = false;
-      document.getElementById('login-lockout').textContent = '';
-      setLoginStatus('', '');
-    } else {
-      document.getElementById('login-lockout').textContent =
-        'LOCKED — TRY AGAIN IN ' + left + 's';
-    }
-  }, 500);
-}
-
-// Allow Enter key to submit login
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const dash = document.getElementById('dashboard');
-    if (dash.style.display === 'none' || !dash.style.display) doLogin();
-  }
+// Enter on password field
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') attemptLogin();
+});
+document.getElementById('login-username').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-password').focus();
 });
 
-// ══ LOGOUT ═══════════════════════════════════════════════════════
-function doLogout() {
-  if (mqttClient && mqttClient.isConnected()) mqttClient.disconnect();
-  mqttClient  = null;
-  currentRole = null;
-  currentUser = null;
-  state       = { armed:false, pir:false, door:false, alarm:false };
+function onLoginSuccess(username, password, role) {
+  currentUser = username;
+  currentRole = role;
+
+  // Persist session (password intentionally NOT stored — re-used only for MQTT re-connect)
+  // We store the role and username; MQTT will reconnect using same credentials.
+  // For MQTT re-connect on disconnect we need the password in memory (sessionStorage only).
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+    username, role,
+    expiry: Date.now() + SESSION_MINS * 60 * 1000,
+    // Store password in session for MQTT reconnect (cleared on tab close)
+    _pw: password
+  }));
+
+  hideLoginScreen();
+  applyRoleRestrictions(role);
+  updateSessionBadge(username, role);
+  connectMQTT(username, password);
+  resetInactivity();
+  toast('Welcome, ' + username.toUpperCase() + ' [' + role.toUpperCase() + ']');
+}
+
+function setLoginLoading(loading) {
+  const btn     = document.getElementById('login-btn');
+  const overlay = document.getElementById('auth-overlay');
+  btn.disabled   = loading;
+  if (loading) {
+    btn.textContent = 'AUTHENTICATING...';
+    btn.classList.add('loading');
+    overlay.classList.add('show');
+  } else {
+    btn.textContent = 'CONNECT';
+    btn.classList.remove('loading');
+    overlay.classList.remove('show');
+  }
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.className   = 'show' + (msg ? '' : '');
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function hideLoginScreen() {
+  setLoginLoading(false);
+  const s = document.getElementById('login-screen');
+  s.classList.add('hidden');
+  setTimeout(() => { s.style.display = 'none'; }, 400);
+}
+
+function showLoginScreen() {
+  const s = document.getElementById('login-screen');
+  s.style.display = 'flex';
+  s.classList.remove('hidden');
+  showLoginError('');
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+// ── Role restrictions ──────────────────────────────────────────
+function applyRoleRestrictions(role) {
+  const els = document.querySelectorAll('.admin-only');
+  if (role === 'admin') {
+    els.forEach(el => el.classList.remove('locked'));
+  } else {
+    els.forEach(el => el.classList.add('locked'));
+  }
+}
+
+function updateSessionBadge(username, role) {
+  document.getElementById('session-user-label').textContent = username.toUpperCase();
+  const badge = document.getElementById('session-role-badge');
+  badge.textContent = role.toUpperCase();
+  badge.className   = 'role-badge ' + role;
+}
+
+// ── Logout ─────────────────────────────────────────────────────
+function logout() {
+  sessionStorage.removeItem(SESSION_KEY);
+  clearTimeout(inactivityTimer);
+  if (mqttClient && mqttClient.isConnected()) {
+    try { mqttClient.disconnect(); } catch(e) {}
+  }
+  mqttClient = null;
+  currentRole = 'user';
+  currentUser = '';
   uptimeSecs  = 0;
-
-  // Reset dashboard role UI
-  document.getElementById('dashboard').classList.remove('viewer-mode');
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('viewer-notice').classList.remove('show');
-  ['cfg-phone','cfg-arm','cfg-disarm'].forEach(id => {
-    document.getElementById(id).disabled = false;
-  });
-  document.getElementById('save-btn').disabled = false;
-  document.getElementById('sms-btn').disabled  = false;
-  document.getElementById('arm-btn').disabled  = false;
-  document.getElementById('arm-btn-wrap').classList.remove('viewer-lock');
-
-  // Show login screen
-  const loginScr = document.getElementById('login-screen');
-  loginScr.style.display = 'flex';
-  loginScr.classList.remove('hidden');
-  document.getElementById('login-pass').value  = '';
-  document.getElementById('login-status').textContent = '';
-  document.getElementById('login-lockout').textContent = '';
-  document.getElementById('login-btn').disabled = false;
-
+  alertCount  = 0;
+  appState    = { armed: false, pir: false, door: false, alarm: false };
+  showLoginScreen();
   toast('Logged out');
 }
 
-// ══ MQTT ═════════════════════════════════════════════════════════
-function setMqttPill(type, label) {
-  const p = document.getElementById('mqtt-pill');
-  p.className = 'mqtt-pill ' + type;
-  document.getElementById('mqtt-label').textContent = label;
+// ── Inactivity auto-lock ───────────────────────────────────────
+function resetInactivity() {
+  clearTimeout(inactivityTimer);
+  // Also refresh session expiry
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (raw) {
+    const s = JSON.parse(raw);
+    s.expiry = Date.now() + SESSION_MINS * 60 * 1000;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  }
+  inactivityTimer = setTimeout(() => {
+    toast('Session expired — logged out');
+    setTimeout(logout, 1500);
+  }, SESSION_MINS * 60 * 1000);
 }
 
-function onMqttMessage(msg) {
-  const topic   = msg.destinationName;
-  const payload = msg.payloadString;
-  if (topic === TOPIC_STATE) {
-    try { updateUI(JSON.parse(payload)); } catch(e){}
-  } else if (topic === TOPIC_LOG) {
-    prependLog(payload);
+['click','keydown','mousemove','touchstart'].forEach(evt =>
+  document.addEventListener(evt, () => {
+    if (document.getElementById('login-screen').style.display === 'none') resetInactivity();
+  }, { passive: true })
+);
+
+// ── Session restore on page reload ────────────────────────────
+function tryRestoreSession() {
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+  try {
+    const s = JSON.parse(raw);
+    if (Date.now() < s.expiry && s.username && s._pw) {
+      selectedRole = s.role;
+      currentUser  = s.username;
+      currentRole  = s.role;
+      hideLoginScreen();
+      applyRoleRestrictions(s.role);
+      updateSessionBadge(s.username, s.role);
+      connectMQTT(s.username, s._pw);
+      resetInactivity();
+      return;
+    }
+  } catch(e) {}
+  sessionStorage.removeItem(SESSION_KEY);
+}
+
+// ── MQTT ───────────────────────────────────────────────────────
+function connectMQTT(username, password) {
+  // If called without args (reconnect), get from session
+  if (!username || !password) {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    username = s.username;
+    password = s._pw;
   }
+
+  setMqttStatus('connecting', 'CONNECTING...');
+
+  mqttClient = new Paho.Client(MQTT_HOST, MQTT_PORT, '/mqtt', CLIENT_ID);
+
+  mqttClient.onConnectionLost = (resp) => {
+    setMqttStatus('error', 'DISCONNECTED');
+    toast('MQTT disconnected — retrying...');
+    setTimeout(() => connectMQTT(), 5000);
+  };
+
+  mqttClient.onMessageArrived = (msg) => {
+    const topic   = msg.destinationName;
+    const payload = msg.payloadString;
+    if (topic === TOPIC_STATE) {
+      try { updateUI(JSON.parse(payload)); }
+      catch(e) { console.error('Bad JSON', e); }
+    } else if (topic === TOPIC_LOG) {
+      prependLogEntry(payload);
+    }
+  };
+
+  mqttClient.connect({
+    useSSL:            true,
+    userName:          username,
+    password:          password,
+    keepAliveInterval: 60,
+    cleanSession:      true,
+    onSuccess: () => {
+      setMqttStatus('connected', 'CONNECTED');
+      document.getElementById('broker-badge').className = 'badge ok';
+      mqttClient.subscribe(TOPIC_STATE);
+      mqttClient.subscribe(TOPIC_LOG);
+    },
+    onFailure: (err) => {
+      setMqttStatus('error', 'AUTH FAILED');
+      toast('MQTT auth error — please log in again');
+      setTimeout(logout, 2000);
+    }
+  });
 }
 
 function publishCmd(cmd) {
-  if (currentRole !== 'admin') { toast('Access denied — viewer mode'); return; }
-  if (!mqttClient || !mqttClient.isConnected()) { toast('Not connected'); return; }
+  if (currentRole !== 'admin') { toast('Admin access required'); return; }
+  if (!mqttClient || !mqttClient.isConnected()) { toast('Not connected to broker'); return; }
   const msg = new Paho.Message(cmd);
   msg.destinationName = TOPIC_CMD;
   msg.qos = 1;
   mqttClient.send(msg);
 }
 
-// ══ UI UPDATE ════════════════════════════════════════════════════
+// ── UI update ──────────────────────────────────────────────────
 function updateUI(d) {
-  if (d.alarm && !state.alarm) sendLocalNotification('⚠ NEXUS ALARM','Intruder detected!');
-  if (d.armed && d.pir  && !state.pir)  sendLocalNotification('⚠ Motion Detected','PIR triggered while armed');
-  if (d.armed && d.door && !state.door) sendLocalNotification('⚠ Door Opened','Door sensor triggered while armed');
-  state = d;
+  if (d.alarm && !appState.alarm) sendLocalNotification('⚠️ NEXUS ALARM', 'Intruder detected at your property!');
+  if (d.armed && d.pir  && !appState.pir)  sendLocalNotification('⚠️ Motion Detected', 'PIR sensor triggered while armed.');
+  if (d.armed && d.door && !appState.door) sendLocalNotification('⚠️ Door Opened', 'Door sensor triggered while armed.');
+  appState = d;
 
-  // Mode hero
-  const hero = document.getElementById('mode-hero');
-  const ms   = document.getElementById('mode-state');
-  const msub = document.getElementById('mode-sub');
+  const modePanel = document.getElementById('mode-panel');
+  const modeText  = document.getElementById('mode-text');
   if (d.alarm) {
-    hero.className='mode-hero alarm'; ms.textContent='ALARM'; msub.textContent='Intruder alert — alarm sounding';
+    modePanel.className  = 'mode-display alarm';
+    modeText.textContent = 'ALARM';
   } else if (d.armed) {
-    hero.className='mode-hero armed'; ms.textContent='ARMED'; msub.textContent='Monitoring active — all sensors live';
+    modePanel.className  = 'mode-display armed';
+    modeText.textContent = 'ARMED';
   } else {
-    hero.className='mode-hero disarmed'; ms.textContent='DISARMED'; msub.textContent='All sensors nominal — property secure';
+    modePanel.className  = 'mode-display disarmed';
+    modeText.textContent = 'DISARMED';
   }
 
-  // Arm button (only update if admin)
-  if (currentRole === 'admin') {
-    const btn = document.getElementById('arm-btn');
-    btn.className   = d.armed ? 'do-disarm' : 'do-arm';
-    btn.textContent = d.armed ? 'DISARM' : 'ARM';
-  }
+  const armVal = document.getElementById('arm-val');
+  armVal.textContent = d.armed ? 'ARMED' : 'DISARMED';
+  armVal.style.color = d.armed ? 'var(--danger)' : 'var(--ok)';
+  document.getElementById('arm-card').className = 'card ' + (d.armed ? 'danger' : 'ok');
 
-  // Sensor cards
-  setSensorCard('sys-card',  'sys-led',  'sys-val',  d.armed, false, d.armed?'ARMED':'DISARMED');
-  setSensorCard('pir-card',  'pir-led',  'pir-val',  d.pir,   false, d.pir?'TRIGGERED':'CLEAR');
-  setSensorCard('door-card', 'door-led', 'door-val', d.door,  true,  d.door?'OPEN':'CLOSED');
+  const btn = document.getElementById('arm-btn');
+  btn.className   = d.armed ? 'disarm' : 'arm';
+  btn.textContent = d.armed ? 'DISARM SYSTEM' : 'ARM SYSTEM';
 
-  // Alert banner
+  setDot('pir-dot', d.pir ? 'danger' : '');
+  document.getElementById('pir-val').textContent = d.pir ? 'TRIGGERED' : 'CLEAR';
+  document.getElementById('pir-card').className  = 'card ' + (d.pir ? 'danger' : 'ok');
+
+  setDot('door-dot', d.door ? 'danger' : 'ok');
+  document.getElementById('door-val').textContent = d.door ? 'OPEN' : 'CLOSED';
+  document.getElementById('door-card').className  = 'card ' + (d.door ? 'danger' : 'ok');
+
+  const banner = document.getElementById('alert-banner');
   if (d.armed && (d.pir || d.door || d.alarm)) {
-    document.getElementById('alert-banner').classList.add('show');
+    banner.classList.add('show');
     alertCount++;
-    const ac = document.getElementById('alert-count');
-    ac.textContent = alertCount; ac.className = 'badge danger';
+    const badge = document.getElementById('alert-count-badge');
+    badge.textContent = alertCount;
+    badge.className   = 'badge danger';
   } else {
-    document.getElementById('alert-banner').classList.remove('show');
+    banner.classList.remove('show');
   }
 
   if (d.log && d.log.length) renderLog(d.log);
 }
 
-function setSensorCard(cardId, ledId, valId, active, isDoor, label) {
-  const card = document.getElementById(cardId);
-  const led  = document.getElementById(ledId);
-  const val  = document.getElementById(valId);
-  const doorClass = isDoor ? ' door' : '';
-  card.className = 'sensor-card' + (active ? ' triggered' + doorClass : (isDoor ? ' door ok' : ' ok'));
-  led.className  = 'sensor-led' + (active ? ' triggered' + (isDoor?' door':'') : ' ok');
-  val.textContent = label;
-  val.className   = 'sensor-value' + (active ? '' : ' ok');
-}
-
-// ══ LOG ══════════════════════════════════════════════════════════
-function logClass(e) {
-  if (e.includes('ALARM')||e.includes('triggered')||e.includes('opened')||e.includes('Intruder')) return 'alert-log';
-  if (e.includes('isarmed')||e.includes('Safe')||e.includes('connected')) return 'ok-log';
-  if (e.includes('PIN')||e.includes('Phone')||e.includes('SMS')) return 'info-log';
-  return '';
-}
-function parseLog(raw) {
-  const m = raw.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*(.*)$/);
-  return m ? {time:m[1],text:m[2]} : {time:'',text:raw};
-}
+// ── Log ────────────────────────────────────────────────────────
 function renderLog(entries) {
-  document.getElementById('log-list').innerHTML = entries.map(e => {
-    const {time,text} = parseLog(e);
-    return `<div class="log-entry ${logClass(e)}">
-      <span class="log-time">${time}</span>
-      <span class="log-text">${text}</span></div>`;
+  const el = document.getElementById('log-list');
+  el.innerHTML = entries.map(e => {
+    let cls = 'log-entry';
+    if (e.includes('ALARM') || e.includes('triggered') || e.includes('opened')) cls += ' alert-log';
+    else if (e.includes('isarmed') || e.includes('Safe')) cls += ' ok-log';
+    return '<div class="' + cls + '">' + e + '</div>';
   }).join('');
 }
-function prependLog(raw) {
-  const el = document.getElementById('log-list');
-  const {time,text} = parseLog(raw);
+
+function prependLogEntry(entry) {
+  const el  = document.getElementById('log-list');
   const div = document.createElement('div');
-  div.className = 'log-entry ' + logClass(raw);
-  div.innerHTML = `<span class="log-time">${time}</span><span class="log-text">${text}</span>`;
+  div.className = 'log-entry';
+  if (entry.includes('ALARM') || entry.includes('triggered')) div.classList.add('alert-log');
+  div.textContent = entry;
   el.insertBefore(div, el.firstChild);
   while (el.children.length > 20) el.removeChild(el.lastChild);
 }
+
 function clearLog() {
   document.getElementById('log-list').innerHTML =
-    '<div class="log-entry"><span class="log-time">--:--:--</span><span class="log-text">Log cleared</span></div>';
+    '<div class="log-entry" style="color:var(--muted);">— log cleared —</div>';
   toast('Log cleared');
 }
 
-// ══ CONTROLS ════════════════════════════════════════════════════
+// ── Controls ───────────────────────────────────────────────────
 function toggleArm() {
-  if (currentRole !== 'admin') { toast('Access denied — viewer mode'); return; }
-  const cmd = state.armed ? 'DISARM' : 'ARM';
+  if (currentRole !== 'admin') { toast('Admin access required'); return; }
+  const cmd = appState.armed ? 'DISARM' : 'ARM';
   publishCmd(cmd);
-  const la = document.getElementById('last-action');
-  la.textContent = cmd; la.className = 'badge ' + (cmd==='ARM'?'danger':'ok');
-  toast(cmd==='ARM' ? 'Arming...' : 'Disarming...');
+  const badge = document.getElementById('last-action-badge');
+  badge.textContent = cmd;
+  badge.className   = 'badge ' + (cmd === 'ARM' ? 'danger' : 'ok');
+  toast(cmd === 'ARM' ? 'Arming system...' : 'Disarming system...');
 }
 
 function saveSettings() {
-  if (currentRole !== 'admin') { toast('Access denied'); return; }
+  if (currentRole !== 'admin') { toast('Admin access required'); return; }
   const phone  = document.getElementById('cfg-phone').value.trim();
   const armPIN = document.getElementById('cfg-arm').value.trim();
   const disPIN = document.getElementById('cfg-disarm').value.trim();
-  if (armPIN && !/^\d{4}$/.test(armPIN)) { toast('ARM code: 4 digits'); return; }
-  if (disPIN && !/^\d{4}$/.test(disPIN)) { toast('DISARM code: 4 digits'); return; }
-  if (armPIN && disPIN && armPIN===disPIN) { toast('Codes must differ'); return; }
-  if (phone.length >= 10) publishCmd('PHONE='+phone);
-  if (armPIN && disPIN)   publishCmd('PIN='+armPIN+':'+disPIN);
-  toast('Config sent');
-  showCfgStatus('Sent to ESP32 via MQTT','ok');
+  if (armPIN && !/^\d{4}$/.test(armPIN)) { toast('ARM code must be 4 digits'); return; }
+  if (disPIN && !/^\d{4}$/.test(disPIN)) { toast('DISARM code must be 4 digits'); return; }
+  if (armPIN && disPIN && armPIN === disPIN) { toast('ARM and DISARM codes must differ'); return; }
+  if (phone.length >= 10) publishCmd('PHONE=' + phone);
+  if (armPIN && disPIN)   publishCmd('PIN=' + armPIN + ':' + disPIN);
+  toast('Config sent to ESP32');
+  showCfgStatus('Commands sent via MQTT', 'ok');
 }
 
 function testSMS() {
-  if (currentRole !== 'admin') { toast('Access denied'); return; }
+  if (currentRole !== 'admin') { toast('Admin access required'); return; }
   publishCmd('TESTSMS');
-  toast('Test SMS sent');
+  toast('Test SMS command sent');
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function setDot(id, cls) { document.getElementById(id).className = 'dot ' + cls; }
+
+function setMqttStatus(type, label) {
+  const el = document.getElementById('mqtt-status');
+  el.className = type;
+  document.getElementById('mqtt-label').textContent = label;
 }
 
 function showCfgStatus(msg, type) {
   const el = document.getElementById('cfg-status');
-  el.textContent = msg; el.className = 'cfg-status show ' + type;
-  setTimeout(() => { el.className='cfg-status'; }, 4000);
+  el.textContent = msg;
+  el.className = 'cfg-status show ' + type;
+  setTimeout(() => { el.className = 'cfg-status'; }, 5000);
 }
 
-// ══ TOAST ════════════════════════════════════════════════════════
 let toastTimer;
 function toast(msg) {
   const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
+  el.textContent = msg;
+  el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// ══ CHART ════════════════════════════════════════════════════════
-const CHART_INTERVAL_MS=10000, CHART_MAX_POINTS=360;
-let chartRangeMinutes=15, chartInstance=null, chartHistory=[];
-let statPir=0, statDoor=0, statAlarm=0;
-let prevPir=false, prevDoor=false, prevAlarm=false;
+// ── Chart ──────────────────────────────────────────────────────
+const CHART_INTERVAL_MS = 10000;
+const CHART_MAX_POINTS  = 360;
+let chartRangeMinutes = 15;
+let chartInstance     = null;
+let chartHistory      = [];
+let statPirCount   = 0, statDoorCount = 0, statAlarmCount = 0, statLastEvent = '—';
+let prevPir = false, prevDoor = false, prevAlarm = false;
 
 function recordChartSample() {
-  const now=Date.now(), s=state;
-  if(s.pir   && !prevPir)  {statPir++;  updateStatCards()}
-  if(s.door  && !prevDoor) {statDoor++; updateStatCards()}
-  if(s.alarm && !prevAlarm){statAlarm++;updateStatCards()}
-  prevPir=s.pir; prevDoor=s.door; prevAlarm=s.alarm;
-  chartHistory.push({t:now,pir:s.pir?1:0,door:s.door?1:0,alarm:s.alarm?1:0});
-  if(chartHistory.length>CHART_MAX_POINTS) chartHistory.shift();
-  updateChart();
+  const now = Date.now(), s = appState;
+  if (s.pir   && !prevPir)   { statPirCount++;   statLastEvent = fmtTime(now); }
+  if (s.door  && !prevDoor)  { statDoorCount++;  statLastEvent = fmtTime(now); }
+  if (s.alarm && !prevAlarm) { statAlarmCount++; statLastEvent = fmtTime(now); }
+  prevPir = s.pir; prevDoor = s.door; prevAlarm = s.alarm;
+  chartHistory.push({ t: now, pir: s.pir?1:0, door: s.door?1:0, alarm: s.alarm?1:0 });
+  if (chartHistory.length > CHART_MAX_POINTS) chartHistory.shift();
+  updateChart(); updateStatCards();
 }
-function updateStatCards() {
-  document.getElementById('stat-pir').textContent   = statPir;
-  document.getElementById('stat-door').textContent  = statDoor;
-  document.getElementById('stat-alarm').textContent = statAlarm;
+
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
 }
+
 function getWindowedData() {
-  const cutoff=Date.now()-chartRangeMinutes*60*1000;
-  return chartHistory.filter(p=>p.t>=cutoff);
+  const cutoff = Date.now() - chartRangeMinutes * 60 * 1000;
+  return chartHistory.filter(p => p.t >= cutoff);
 }
-function fmtChartTime(ts) {
-  const d=new Date(ts);
-  return d.getHours().toString().padStart(2,'0')+':'+
-         d.getMinutes().toString().padStart(2,'0')+':'+
-         d.getSeconds().toString().padStart(2,'0');
+
+function buildDatasets(points) {
+  const labels    = points.map(p => { const d=new Date(p.t); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')+':'+d.getSeconds().toString().padStart(2,'0'); });
+  const pirData   = points.map(p => p.pir   ? 2.8 : null);
+  const doorData  = points.map(p => p.door  ? 1.8 : null);
+  const alarmData = points.map(p => p.alarm ? 0.8 : null);
+  return { labels, pirData, doorData, alarmData };
 }
+
 function initChart() {
-  const ctx=document.getElementById('sensor-chart').getContext('2d');
-  Chart.defaults.color='#3a5468';
-  Chart.defaults.font.family="'Share Tech Mono',monospace";
-  Chart.defaults.font.size=9;
-  chartInstance=new Chart(ctx,{
-    type:'line',
-    data:{labels:[],datasets:[
-      {label:'PIR', data:[],borderColor:'#ff2d55',backgroundColor:'rgba(255,45,85,0.08)',
-       borderWidth:1.5,pointRadius:2,pointHoverRadius:4,stepped:true,fill:true,spanGaps:false,pointBackgroundColor:'#ff2d55'},
-      {label:'Door',data:[],borderColor:'#00d2ff',backgroundColor:'rgba(0,210,255,0.06)',
-       borderWidth:1.5,pointRadius:2,pointHoverRadius:4,stepped:true,fill:true,spanGaps:false,pointBackgroundColor:'#00d2ff'},
-      {label:'Alarm',data:[],borderColor:'#ffb300',backgroundColor:'rgba(255,179,0,0.06)',
-       borderWidth:1.5,pointRadius:2,pointHoverRadius:4,stepped:true,fill:true,spanGaps:false,pointBackgroundColor:'#ffb300'},
-    ]},
-    options:{
-      responsive:true,maintainAspectRatio:false,animation:{duration:200},
+  const ctx = document.getElementById('sensor-chart').getContext('2d');
+  Chart.defaults.color = '#4a6a8a';
+  Chart.defaults.font.family = "'Share Tech Mono', monospace";
+  Chart.defaults.font.size   = 10;
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label:'PIR Motion', data:[], borderColor:'#ff3b3b', backgroundColor:'rgba(255,59,59,0.15)', borderWidth:2, pointRadius:3, pointHoverRadius:5, pointBackgroundColor:'#ff3b3b', stepped:true, fill:true, spanGaps:false },
+        { label:'Door',       data:[], borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,0.10)', borderWidth:2, pointRadius:3, pointHoverRadius:5, pointBackgroundColor:'#00d4ff', stepped:true, fill:true, spanGaps:false },
+        { label:'Alarm',      data:[], borderColor:'#ffaa00', backgroundColor:'rgba(255,170,0,0.10)', borderWidth:2, pointRadius:3, pointHoverRadius:5, pointBackgroundColor:'#ffaa00', stepped:true, fill:true, spanGaps:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:{duration:300},
       interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:false},tooltip:{
-        backgroundColor:'#0d1220',borderColor:'rgba(0,210,255,0.15)',borderWidth:1,
-        titleColor:'#d0e4f0',bodyColor:'#7090a8',padding:10,
-        callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.raw!==null?'ACTIVE':'CLEAR')}
-      }},
+      plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#0d1420', borderColor:'#1a2d44', borderWidth:1, titleColor:'#c8ddf0', bodyColor:'#4a6a8a', padding:10 }},
       scales:{
-        x:{grid:{color:'rgba(0,210,255,0.04)',lineWidth:0.5},ticks:{color:'#3a5468',maxTicksLimit:5,maxRotation:0},border:{color:'rgba(0,210,255,0.08)'}},
-        y:{min:0,max:3.6,grid:{color:'rgba(0,210,255,0.04)',lineWidth:0.5},border:{color:'rgba(0,210,255,0.08)'},
-          ticks:{color:'#3a5468',callback:v=>v===2.8?'PIR':v===1.8?'DOOR':v===0.8?'ALARM':'',stepSize:1}}
+        x:{ grid:{color:'rgba(26,45,68,0.6)',lineWidth:0.5}, ticks:{color:'#4a6a8a',maxTicksLimit:6,maxRotation:0}, border:{color:'#1a2d44'} },
+        y:{ min:0, max:3.6, grid:{color:'rgba(26,45,68,0.6)',lineWidth:0.5}, border:{color:'#1a2d44'}, ticks:{color:'#4a6a8a', callback:val=>val===2.8?'PIR':val===1.8?'DOOR':val===0.8?'ALARM':'', stepSize:1 }}
       }
     }
   });
 }
+
 function updateChart() {
-  if(!chartInstance) return;
-  const pts=getWindowedData();
-  chartInstance.data.labels           =pts.map(p=>fmtChartTime(p.t));
-  chartInstance.data.datasets[0].data =pts.map(p=>p.pir  ?2.8:null);
-  chartInstance.data.datasets[1].data =pts.map(p=>p.door ?1.8:null);
-  chartInstance.data.datasets[2].data =pts.map(p=>p.alarm?0.8:null);
+  if (!chartInstance) return;
+  const points = getWindowedData();
+  const { labels, pirData, doorData, alarmData } = buildDatasets(points);
+  chartInstance.data.labels           = labels;
+  chartInstance.data.datasets[0].data = pirData;
+  chartInstance.data.datasets[1].data = doorData;
+  chartInstance.data.datasets[2].data = alarmData;
   chartInstance.update('none');
 }
-function setChartRange(min,btn,label) {
-  chartRangeMinutes=min;
-  document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));
+
+function updateStatCards() {
+  document.getElementById('stat-pir-count').textContent   = statPirCount;
+  document.getElementById('stat-door-count').textContent  = statDoorCount;
+  document.getElementById('stat-alarm-count').textContent = statAlarmCount;
+  document.getElementById('stat-last-event').textContent  = statLastEvent;
+}
+
+function setChartRange(minutes, btn) {
+  chartRangeMinutes = minutes;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('chart-window-label').textContent=label;
   updateChart();
 }
+
 function startChart() {
-  if(typeof Chart==='undefined'){setTimeout(startChart,200);return}
+  if (typeof Chart === 'undefined') { setTimeout(startChart, 200); return; }
   initChart();
-  setInterval(recordChartSample,CHART_INTERVAL_MS);
-  setTimeout(recordChartSample,1200);
+  setInterval(recordChartSample, CHART_INTERVAL_MS);
+  setTimeout(recordChartSample, 1000);
+}
+startChart();
+
+// ── PWA / Notifications ────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/nexus-security/sw.js')
+    .then(reg => {
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.action === 'DISARM') { publishCmd('DISARM'); toast('Disarmed from notification'); }
+      });
+    })
+    .catch(err => console.warn('SW failed:', err));
 }
 
-// ══ NOTIFICATIONS ════════════════════════════════════════════════
 async function requestNotificationPermission() {
-  if(!('Notification' in window)||Notification.permission!=='default') return;
+  if (!('Notification' in window) || Notification.permission !== 'default') return;
   await Notification.requestPermission();
 }
-function sendLocalNotification(title,body) {
-  if(!('Notification' in window)||Notification.permission!=='granted') return;
-  navigator.serviceWorker.ready.then(reg=>{
-    reg.showNotification(title,{
-      body,icon:'/nexus-security/icon-192.png',badge:'/nexus-security/icon-192.png',
-      vibrate:[200,100,200,100,200],tag:'nexus-alert',renotify:true,
-      actions:[{action:'disarm',title:'Disarm'},{action:'view',title:'Open'}]
+
+function sendLocalNotification(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  navigator.serviceWorker.ready.then(reg => {
+    reg.showNotification(title, {
+      body, icon:'/nexus-security/icon-192.png', badge:'/nexus-security/icon-192.png',
+      vibrate:[200,100,200,100,200], tag:'nexus-alert', renotify:true,
+      actions:[{action:'disarm',title:'Disarm'},{action:'view',title:'Open dashboard'}]
     });
-  }).catch(()=>{
-    // Fallback if SW not available
-    new Notification(title,{body});
   });
 }
 
-// ══ PWA ══════════════════════════════════════════════════════════
-let deferredInstall=null;
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/nexus-security/sw.js').then(reg=>{
-    navigator.serviceWorker.addEventListener('message',e=>{
-      if(e.data&&e.data.action==='DISARM'){publishCmd('DISARM');toast('Disarmed from notification')}
-    });
-  }).catch(()=>{});
-}
-window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault(); deferredInstall=e;
-  document.getElementById('install-banner').classList.add('show');
-});
-function installPWA() {
-  if(!deferredInstall) return;
-  deferredInstall.prompt();
-  deferredInstall.userChoice.then(r=>{
-    if(r.outcome==='accepted') toast('NEXUS installed!');
-    deferredInstall=null;
-    document.getElementById('install-banner').classList.remove('show');
-  });
-}
+requestNotificationPermission();
+
+// ── BOOT ───────────────────────────────────────────────────────
+tryRestoreSession();
 </script>
 </body>
 </html>
